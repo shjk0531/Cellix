@@ -1,0 +1,78 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-cellix}
+      POSTGRES_USER: ${POSTGRES_USER:-cellix}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cellix_secret}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cellix} -d ${POSTGRES_DB:-cellix}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: packages/backend/Dockerfile
+    ports:
+      - "${BACKEND_PORT:-3001}:3001"
+    volumes:
+      - ./packages/backend/src:/app/packages/backend/src
+      - ./packages/shared/src:/app/packages/shared/src
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: development
+      PORT: "3001"
+      HOST: "0.0.0.0"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-cellix}:${POSTGRES_PASSWORD:-cellix_secret}@postgres:5432/${POSTGRES_DB:-cellix}"
+      REDIS_URL: "redis://redis:6379"
+      CORS_ORIGIN: "http://localhost:5173"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      dockerfile: packages/frontend/Dockerfile
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    volumes:
+      - ./packages/frontend/src:/app/packages/frontend/src
+      - ./packages/shared/src:/app/packages/shared/src
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: development
+      VITE_API_BASE_URL: "http://localhost:${BACKEND_PORT:-3001}"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  redis_data:
