@@ -11,7 +11,7 @@ export interface CellRange {
     end: CellAddress;
 }
 
-// ── Style ────────────────────────────────────────────────────────────────────
+// ── 스타일 ───────────────────────────────────────────────────────────────────
 
 export type FontWeight = "normal" | "bold";
 export type FontStyle = "normal" | "italic";
@@ -70,7 +70,7 @@ export interface CellStyle {
     locked?: boolean;
 }
 
-// ── Merge ────────────────────────────────────────────────────────────────────
+// ── 병합 ─────────────────────────────────────────────────────────────────────
 
 export interface MergeInfo {
     rowSpan: number;
@@ -79,7 +79,7 @@ export interface MergeInfo {
     masterCell?: CellAddress;
 }
 
-// ── Cell ─────────────────────────────────────────────────────────────────────
+// ── 셀 ───────────────────────────────────────────────────────────────────────
 
 export interface CellData {
     value: CellValue;

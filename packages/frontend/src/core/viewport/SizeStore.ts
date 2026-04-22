@@ -1,19 +1,19 @@
 /**
- * Memory-efficient size store backed by Uint16Array.
+ * Uint16Array 기반 메모리 효율적인 크기 저장소.
  *
- * Layout:
- *   data[i]          – size of cell i (px), max 65535
- *   chunkSums[c]     – cumulative pixel total up to and including chunk c
- *                      (i.e. prefix sum of all chunks 0..c)
+ * 구조:
+ *   data[i]          – 셀 i의 크기 (px), 최대 65535
+ *   chunkSums[c]     – 청크 c까지의 누적 픽셀 합계
+ *                      (즉, 청크 0..c의 누적 prefix sum)
  *
- * Complexity:
+ * 시간 복잡도:
  *   getOffset(i)     – O(CHUNK_SIZE)  ≈ O(512)
- *   findIndex(p)     – O(log C + CHUNK_SIZE)  where C = number of chunks
- *   setSize(i, v)    – O((C - floor(i/CHUNK_SIZE)) * CHUNK_SIZE)  (rebuilds tail)
+ *   findIndex(p)     – O(log C + CHUNK_SIZE)  (C = 청크 수)
+ *   setSize(i, v)    – O((C - floor(i/CHUNK_SIZE)) * CHUNK_SIZE)  (이후 청크 재계산)
  *
- * Memory (1 048 576 rows, CHUNK=512):
- *   data             – 2 097 152 B  ≈ 2 MB
- *   chunkSums        – 2 048 × 8 B  = 16 KB
+ * 메모리 사용량 (행 1,048,576개, CHUNK=512):
+ *   data             – 2,097,152 B  ≈ 2 MB
+ *   chunkSums        – 2,048 × 8 B  = 16 KB
  */
 export class SizeStore {
     readonly data: Uint16Array;
@@ -32,11 +32,11 @@ export class SizeStore {
         const numChunks = Math.ceil(count / chunkSize);
         this.chunkSums = new Float64Array(numChunks);
 
-        // Fast O(C) init — each chunk has uniform size
+        // 균일한 기본 크기로 O(C) 초기화
         for (let c = 0; c < numChunks - 1; c++) {
             this.chunkSums[c] = (c + 1) * chunkSize * defaultSize;
         }
-        // Last chunk may be shorter
+        // 마지막 청크는 크기가 다를 수 있음
         const lastChunk = numChunks - 1;
         const lastLen = count - lastChunk * chunkSize;
         this.chunkSums[lastChunk] =
@@ -51,7 +51,7 @@ export class SizeStore {
         return this.chunkSums[this.chunkSums.length - 1];
     }
 
-    /** Absolute pixel offset of index i (left/top edge of cell i). */
+    /** 인덱스 i의 절대 픽셀 오프셋 (셀 i의 좌측/상단 모서리). */
     getOffset(i: number): number {
         if (i <= 0) return 0;
         const chunk = Math.floor(i / this.chunkSize);
@@ -65,8 +65,8 @@ export class SizeStore {
     }
 
     /**
-     * Populate `out[k] = getOffset(start + k)` for k in [0, count).
-     * O(count + CHUNK_SIZE) — much faster than calling getOffset repeatedly.
+     * `out[k] = getOffset(start + k)`을 k ∈ [0, count) 범위로 채움.
+     * O(count + CHUNK_SIZE) — getOffset을 반복 호출하는 것보다 훨씬 빠름.
      */
     getOffsetRange(start: number, count: number, out: Float64Array): void {
         out[0] = this.getOffset(start);
@@ -76,8 +76,8 @@ export class SizeStore {
     }
 
     /**
-     * Returns the index whose cell contains pixel position p,
-     * along with its left/top edge offset.
+     * 픽셀 위치 p를 포함하는 셀의 인덱스와
+     * 해당 셀의 좌측/상단 모서리 오프셋을 반환.
      */
     findIndex(p: number): { index: number; offset: number } {
         if (p <= 0) return { index: 0, offset: 0 };
@@ -87,7 +87,7 @@ export class SizeStore {
             return { index: last, offset: total - this.data[last] };
         }
 
-        // Binary search over chunk sums
+        // 청크 합계에 대한 이진 탐색
         let lo = 0;
         let hi = this.chunkSums.length - 1;
         while (lo < hi) {
@@ -96,7 +96,7 @@ export class SizeStore {
             else hi = mid;
         }
 
-        // Linear scan within the found chunk
+        // 찾은 청크 내 선형 탐색
         const base = lo * this.chunkSize;
         let offset = lo > 0 ? this.chunkSums[lo - 1] : 0;
         const end = Math.min(base + this.chunkSize, this.count);

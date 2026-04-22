@@ -1,6 +1,6 @@
 import type { WorkbookData } from "./sheet";
 
-// ── Exam Problem ──────────────────────────────────────────────────────────────
+// ── 시험 문제 ─────────────────────────────────────────────────────────────────
 
 export type ProblemType =
     | "formula"
@@ -39,7 +39,7 @@ export interface ExamProblem {
     updatedAt: string;
 }
 
-// ── Submission & Result ───────────────────────────────────────────────────────
+// ── 제출 & 채점 결과 ──────────────────────────────────────────────────────────
 
 export type GradingStatus = "pass" | "partial" | "fail";
 

@@ -1,6 +1,6 @@
 import type { CellRange, CellStyle } from "./cell";
 
-// ── Table (Ctrl+T) ────────────────────────────────────────────────────────────
+// ── 표 (Ctrl+T) ───────────────────────────────────────────────────────────────
 
 export type TableStyleName =
     | "TableStyleLight1"

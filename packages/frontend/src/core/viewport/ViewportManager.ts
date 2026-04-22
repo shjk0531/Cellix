@@ -7,29 +7,29 @@ import type {
     ViewportState,
 } from "./types";
 
-// ── Excel-spec dimensions ────────────────────────────────────────────────────
+// ── 엑셀 스펙 최대 크기 ──────────────────────────────────────────────────────
 export const MAX_ROWS = 1_048_576;
 export const MAX_COLS = 16_384;
-export const DEFAULT_ROW_HEIGHT = 20; // px
-export const DEFAULT_COL_WIDTH = 80; // px
+export const DEFAULT_ROW_HEIGHT = 20;   // px
+export const DEFAULT_COL_WIDTH = 80;    // px
 
-// SizeStore chunk sizes — tuned for the ratio of row vs col counts
-const ROW_CHUNK = 512; // 2048 chunks for 1M rows
-const COL_CHUNK = 128; // 128  chunks for 16K cols
+// 행/열 비율에 맞게 조정된 SizeStore 청크 크기
+const ROW_CHUNK = 512;   // 1M 행 → 2048 청크
+const COL_CHUNK = 128;   // 16K 열 → 128 청크
 
 /**
- * Manages the virtual scroll viewport for the spreadsheet canvas.
+ * 스프레드시트 캔버스의 가상 스크롤 뷰포트를 관리.
  *
- * Responsibilities:
- *   - Tracks scroll position (scrollX, scrollY) and canvas dimensions
- *   - Computes the visible cell range on every scroll/resize
- *   - Notifies subscribers via RAF-batched listener calls
- *   - Provides O(log n + CHUNK) cellToPixel / pixelToCell conversions
+ * 담당 역할:
+ *   - 스크롤 위치(scrollX, scrollY)와 캔버스 크기 추적
+ *   - 스크롤/리사이즈 시마다 보이는 셀 범위 계산
+ *   - RAF 배칭을 통해 구독자에게 변경 알림
+ *   - O(log n + CHUNK) 복잡도의 cellToPixel / pixelToCell 변환 제공
  *
- * Memory footprint:
+ * 메모리 사용량:
  *   rowHeights Uint16Array   ~2 MB
  *   colWidths  Uint16Array   ~32 KB
- *   chunk sums Float64Array  ~16 KB + ~1 KB
+ *   청크 합계 Float64Array   ~16 KB + ~1 KB
  */
 export class ViewportManager {
     private scrollX = 0;
@@ -62,16 +62,16 @@ export class ViewportManager {
         this._recalculate();
     }
 
-    // ── Subscription ───────────────────────────────────────────────────────────
+    // ── 구독 ──────────────────────────────────────────────────────────────────
 
-    /** Subscribe to viewport changes. Returns an unsubscribe function. */
+    /** 뷰포트 변경을 구독. 구독 해제 함수를 반환. */
     subscribe(listener: ViewportListener): () => void {
         this.listeners.add(listener);
         listener(this._buildState());
         return () => this.listeners.delete(listener);
     }
 
-    // ── Scroll & Resize ────────────────────────────────────────────────────────
+    // ── 스크롤 & 리사이즈 ─────────────────────────────────────────────────────
 
     scrollTo(x: number, y: number): void {
         this.scrollX = Math.max(
@@ -95,7 +95,7 @@ export class ViewportManager {
         this._schedule();
     }
 
-    // ── Row / Column Sizing ────────────────────────────────────────────────────
+    // ── 행 / 열 크기 ──────────────────────────────────────────────────────────
 
     setRowHeight(row: number, height: number): void {
         this.rows.setSize(row, height);
@@ -115,11 +115,11 @@ export class ViewportManager {
         return this.cols.getSize(col);
     }
 
-    // ── Coordinate Conversion ──────────────────────────────────────────────────
+    // ── 좌표 변환 ─────────────────────────────────────────────────────────────
 
     /**
-     * Returns the canvas pixel position of a cell's top-left corner.
-     * Values can be negative when the cell is scrolled above/left of the viewport.
+     * 셀의 좌측 상단 모서리에 해당하는 캔버스 픽셀 좌표를 반환.
+     * 셀이 뷰포트 위/왼쪽으로 스크롤된 경우 음수가 될 수 있음.
      */
     cellToPixel(row: number, col: number): PixelPoint {
         return {
@@ -129,8 +129,8 @@ export class ViewportManager {
     }
 
     /**
-     * Returns the cell address at a given canvas pixel coordinate.
-     * Clamps to [0, MAX_ROWS/COLS - 1].
+     * 캔버스 픽셀 좌표에 해당하는 셀 주소를 반환.
+     * [0, MAX_ROWS/COLS - 1] 범위로 클램핑됨.
      */
     pixelToCell(x: number, y: number): CellCoord {
         return {
@@ -139,11 +139,11 @@ export class ViewportManager {
         };
     }
 
-    // ── Viewport Iteration (for renderers) ────────────────────────────────────
+    // ── 뷰포트 순회 (렌더러용) ───────────────────────────────────────────────
 
     /**
-     * Iterate visible rows with their pre-computed canvas Y and height.
-     * O(endRow - startRow) — avoids per-cell getOffset() calls.
+     * 보이는 행을 미리 계산된 캔버스 Y 좌표와 높이로 순회.
+     * O(endRow - startRow) — 셀마다 getOffset()을 호출하지 않아 빠름.
      */
     iterateRows(cb: (row: number, y: number, height: number) => void): void {
         const { startRow, endRow, offsetY } = this.range;
@@ -156,8 +156,8 @@ export class ViewportManager {
     }
 
     /**
-     * Iterate visible columns with their pre-computed canvas X and width.
-     * O(endCol - startCol) — avoids per-cell getOffset() calls.
+     * 보이는 열을 미리 계산된 캔버스 X 좌표와 너비로 순회.
+     * O(endCol - startCol) — 셀마다 getOffset()을 호출하지 않아 빠름.
      */
     iterateCols(cb: (col: number, x: number, width: number) => void): void {
         const { startCol, endCol, offsetX } = this.range;
@@ -169,7 +169,7 @@ export class ViewportManager {
         }
     }
 
-    // ── State Accessors ────────────────────────────────────────────────────────
+    // ── 상태 접근자 ───────────────────────────────────────────────────────────
 
     getState(): ViewportState {
         return this._buildState();
@@ -195,8 +195,8 @@ export class ViewportManager {
     }
 
     /**
-     * Force-flush any pending RAF update synchronously.
-     * Useful in tests and in response to wheel events that need immediate feedback.
+     * 대기 중인 RAF 업데이트를 동기적으로 강제 실행.
+     * 테스트 환경 또는 휠 이벤트에 즉각 반응이 필요할 때 사용.
      */
     flush(): void {
         if (this.rafId !== null) {
@@ -215,13 +215,13 @@ export class ViewportManager {
         this.listeners.clear();
     }
 
-    // ── Internal ───────────────────────────────────────────────────────────────
+    // ── 내부 메서드 ───────────────────────────────────────────────────────────
 
     private _schedule(): void {
         this.dirty = true;
         if (this.rafId !== null) return;
 
-        // Graceful fallback for SSR / test environments without RAF
+        // SSR / 테스트 환경(RAF 미지원) 대응 폴백
         if (typeof requestAnimationFrame === "undefined") {
             this.dirty = false;
             this._recalculate();
@@ -240,7 +240,7 @@ export class ViewportManager {
     }
 
     private _recalculate(): void {
-        // O(log C + CHUNK) per dimension — well within 16ms budget
+        // 차원당 O(log C + CHUNK) — 16ms 예산 내 처리 보장
         const { index: startRow, offset: rowPixelOffset } = this.rows.findIndex(
             this.scrollY,
         );
@@ -257,7 +257,7 @@ export class ViewportManager {
 
         this.range = {
             startRow,
-            endRow: Math.min(endRow + 1, MAX_ROWS - 1), // +1: include partially visible row
+            endRow: Math.min(endRow + 1, MAX_ROWS - 1), // +1: 부분적으로 보이는 행 포함
             startCol,
             endCol: Math.min(endCol + 1, MAX_COLS - 1),
             offsetY: rowPixelOffset - this.scrollY,
