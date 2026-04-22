@@ -6,6 +6,7 @@ WORKDIR /app
 
 # 의존성 레이어 (소스 변경 시 캐시 유지)
 COPY package.json pnpm-workspace.yaml ./
+COPY pnpm-lock.yaml ./
 COPY tsconfig.base.json ./
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/backend/package.json ./packages/backend/

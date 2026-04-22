@@ -3,6 +3,7 @@ RUN apk upgrade --no-cache && npm install -g pnpm
 
 WORKDIR /app
 COPY package.json pnpm-workspace.yaml ./
+COPY pnpm-lock.yaml ./
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/frontend/package.json ./packages/frontend/
 
