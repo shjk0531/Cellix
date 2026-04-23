@@ -14,7 +14,8 @@
     "dependencies": {
         "@cellix/shared": "workspace:*",
         "react": "^18.3.1",
-        "react-dom": "^18.3.1"
+        "react-dom": "^18.3.1",
+        "zustand": "^5.0.12"
     },
     "devDependencies": {
         "@types/react": "^18.3.3",
