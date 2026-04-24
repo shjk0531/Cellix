@@ -1,0 +1,14 @@
+# Cargo build artifacts
+target/
+
+# wasm-pack output
+pkg/
+
+# Rustfmt backup files
+*.rs.bk
+
+# MSVC debug info
+*.pdb
+
+# cargo-mutants
+mutants.out*/

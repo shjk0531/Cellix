@@ -1,0 +1,10 @@
+# Build output
+dist/
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+.vite/
+
+# Cache
+.cache/
