@@ -1,7 +1,9 @@
-import type { CellData, BorderStyle } from '@cellix/shared'
+import type { CellData, BorderStyle, CellRange, CellStyle } from '@cellix/shared'
 import type { ViewportManager } from '../viewport'
 import { styleManager } from '../style/StyleManager'
 import { NumberFormatter } from '../style/NumberFormatter'
+import { conditionalFormatManager } from '../conditional'
+import type { CondFmtCellResult } from '../conditional'
 
 function borderLineWidth(style: BorderStyle): number {
     switch (style) {
@@ -25,9 +27,9 @@ function borderLineWidth(style: BorderStyle): number {
  *
  * 매 프레임 draw()를 호출하면 다음 순서로 그림:
  *   1. 흰색 배경
- *   2. 셀 배경색 (격자선 아래)
+ *   2. 셀 배경색 + 조건부 서식 배경 + 데이터 막대 (격자선 아래)
  *   3. 격자선
- *   4. 셀 텍스트 + 밑줄/취소선 + 개별 테두리
+ *   4. 셀 텍스트 + 밑줄/취소선 + 개별 테두리 (조건부 서식 스타일 오버레이)
  */
 export class GridRenderer {
     private readonly _viewport: ViewportManager
@@ -51,6 +53,25 @@ export class GridRenderer {
         const { viewWidth, viewHeight } = this._viewport.getState()
         const sheetId = this._getSheetId()
 
+        // 조건부 서식 평가에 사용할 getCellValues 콜백
+        const getCellValues = (_: string, range: CellRange): (string | number | boolean | null)[] => {
+            const values: (string | number | boolean | null)[] = []
+            const r1 = Math.min(range.start.row, range.end.row)
+            const r2 = Math.max(range.start.row, range.end.row)
+            const c1 = Math.min(range.start.col, range.end.col)
+            const c2 = Math.max(range.start.col, range.end.col)
+            for (let r = r1; r <= r2; r++) {
+                for (let c = c1; c <= c2; c++) {
+                    const cell = this._getCell(r, c)
+                    const calcVal = this._getCalcVal(r, c)
+                    values.push(
+                        calcVal !== null && calcVal !== undefined ? calcVal : (cell?.value ?? null)
+                    )
+                }
+            }
+            return values
+        }
+
         // 1. 흰색 배경
         ctx.fillStyle = '#ffffff'
         ctx.fillRect(0, 0, viewWidth, viewHeight)
@@ -61,13 +82,37 @@ export class GridRenderer {
         this._viewport.iterateRows((row, y, h) => rows.push({ row, y, h }))
         this._viewport.iterateCols((col, x, w) => cols.push({ col, x, w }))
 
-        // 2. 셀 배경색 (격자선보다 먼저 그려야 격자선이 위에 보임)
+        // 2. 셀 배경색 + 조건부 서식 배경 + 데이터 막대
+        //    (격자선보다 먼저 그려야 격자선이 위에 보임)
+        //    이 패스에서 condFmt 결과를 캐시해 텍스트 패스에서 재사용
+        const cfCache = new Map<string, CondFmtCellResult>()
+
         for (const { row, y, h } of rows) {
             for (const { col, x, w } of cols) {
-                const style = styleManager.getStyle(sheetId, row, col)
-                if (style.backgroundColor) {
-                    ctx.fillStyle = style.backgroundColor
+                const cell = this._getCell(row, col)
+                const calcVal = this._getCalcVal(row, col)
+                const rawValue = calcVal !== null && calcVal !== undefined
+                    ? calcVal
+                    : (cell?.value ?? null)
+
+                const cfResult = conditionalFormatManager.evaluateCell(
+                    sheetId, row, col, rawValue, getCellValues,
+                )
+                cfCache.set(`${row}:${col}`, cfResult)
+
+                const baseStyle = styleManager.getStyle(sheetId, row, col)
+
+                // 배경색: 조건부 서식이 있으면 우선 적용
+                const bgColor = cfResult.style?.backgroundColor ?? baseStyle.backgroundColor
+                if (bgColor) {
+                    ctx.fillStyle = bgColor
                     ctx.fillRect(x, y, w, h)
+                }
+
+                // 데이터 막대 (반투명 50%)
+                if (cfResult.dataBarWidth !== undefined && cfResult.dataBarWidth > 0 && cfResult.dataBarColor) {
+                    ctx.fillStyle = cfResult.dataBarColor + '80'
+                    ctx.fillRect(x, y, w * cfResult.dataBarWidth / 100, h)
                 }
             }
         }
@@ -102,7 +147,19 @@ export class GridRenderer {
             for (const { col, x, w } of cols) {
                 const cell = this._getCell(row, col)
                 const calcVal = this._getCalcVal(row, col)
-                const style = styleManager.getStyle(sheetId, row, col)
+                const baseStyle = styleManager.getStyle(sheetId, row, col)
+                const cfResult = cfCache.get(`${row}:${col}`) ?? {}
+
+                // 조건부 서식 스타일을 baseStyle에 오버레이 (조건부 서식 우선)
+                const style: CellStyle = cfResult.style
+                    ? {
+                        ...baseStyle,
+                        ...cfResult.style,
+                        font: cfResult.style.font
+                            ? { ...baseStyle.font, ...cfResult.style.font }
+                            : baseStyle.font,
+                    }
+                    : baseStyle
 
                 const rawValue = calcVal !== null && calcVal !== undefined
                     ? calcVal
