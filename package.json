@@ -3,7 +3,9 @@
     "version": "1.0.0",
     "private": true,
     "scripts": {
-        "dev": "pnpm --parallel -r dev",
+        "build:wasm": "cd packages/formula-engine && wasm-pack build --target web --out-dir pkg --release",
+        "build:wasm:dev": "cd packages/formula-engine && wasm-pack build --target web --out-dir pkg --dev",
+        "dev": "pnpm build:wasm:dev && pnpm --parallel -r dev",
         "build": "pnpm -r build",
         "typecheck": "pnpm -r typecheck",
         "lint": "pnpm -r lint",

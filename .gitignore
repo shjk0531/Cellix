@@ -134,8 +134,19 @@ dist
 !.yarn/sdks
 !.yarn/versions
 
-# Vite logs files
+# Vite logs files (also in packages/frontend/.gitignore)
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Claude Code
 CLAUDE.md

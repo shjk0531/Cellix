@@ -12,13 +12,16 @@ import type { ViewportManager } from '../viewport'
 export class GridRenderer {
     private readonly _viewport: ViewportManager
     private readonly _getCell: (row: number, col: number) => CellData | null
+    private readonly _getCalcVal: (row: number, col: number) => string | number | boolean | null
 
     constructor(
         viewport: ViewportManager,
         getCell: (row: number, col: number) => CellData | null,
+        getCalculatedValue: (row: number, col: number) => string | number | boolean | null,
     ) {
         this._viewport = viewport
         this._getCell = getCell
+        this._getCalcVal = getCalculatedValue
     }
 
     draw(ctx: CanvasRenderingContext2D): void {
@@ -66,13 +69,15 @@ export class GridRenderer {
         for (const { row, y, h } of rows) {
             for (const { col, x, w } of cols) {
                 const cell = this._getCell(row, col)
-                if (!cell || (cell.value === null && !cell.formula)) continue
-
-                const text = String(cell.value ?? '')
+                const calcVal = this._getCalcVal(row, col)
+                const displayValue = calcVal !== null && calcVal !== undefined
+                    ? calcVal
+                    : (cell?.value ?? null)
+                const text = displayValue !== null ? String(displayValue) : ''
                 if (!text) continue
 
-                const isNumeric = typeof cell.value === 'number'
-                ctx.fillStyle = cell.style?.font?.color ?? '#1f2329'
+                const isNumeric = typeof displayValue === 'number'
+                ctx.fillStyle = cell?.style?.font?.color ?? '#1f2329'
                 ctx.textAlign = isNumeric ? 'right' : 'left'
                 ctx.fillText(
                     text,
