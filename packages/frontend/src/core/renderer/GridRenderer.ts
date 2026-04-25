@@ -4,6 +4,7 @@ import { styleManager } from '../style/StyleManager'
 import { NumberFormatter } from '../style/NumberFormatter'
 import { conditionalFormatManager } from '../conditional'
 import type { CondFmtCellResult } from '../conditional'
+import { filterManager } from '../data'
 
 function borderLineWidth(style: BorderStyle): number {
     switch (style) {
@@ -227,7 +228,20 @@ export class GridRenderer {
                     }
                 }
 
-                // 4f. 개별 셀 테두리 (격자선 위에 그림)
+                // 4f. 자동 필터 ▼ 아이콘 (헤더 행)
+                const _af = filterManager.getAutoFilter(sheetId)
+                if (_af && row === _af.headerRow && col >= _af.startCol && col <= _af.endCol) {
+                    const hasFilter = _af.criteria.has(col)
+                    ctx.save()
+                    ctx.fillStyle = hasFilter ? '#1a73e8' : '#5f6368'
+                    ctx.font = `9px system-ui, -apple-system, sans-serif`
+                    ctx.textAlign = 'right'
+                    ctx.textBaseline = 'middle'
+                    ctx.fillText('▼', x + w - 3, y + h / 2)
+                    ctx.restore()
+                }
+
+                // 4g. 개별 셀 테두리 (격자선 위에 그림)
                 if (style.border) {
                     const b = style.border
                     ctx.save()

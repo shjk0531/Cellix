@@ -52,6 +52,9 @@ export class ViewportManager {
     private rafId: number | null = null;
     private dirty = false;
 
+    private hiddenRows = new Set<number>()
+    private readonly savedHeights = new Map<number, number>()
+
     private readonly listeners = new Set<ViewportListener>();
 
     constructor(viewWidth = 800, viewHeight = 600) {
@@ -115,6 +118,27 @@ export class ViewportManager {
         return this.cols.getSize(col);
     }
 
+    /** 숨길 행 집합을 교체. 이전에 숨겼던 행은 원래 높이로 복원됨. */
+    setHiddenRows(rows: Set<number>): void {
+        // 이전 숨김 행 중 새 목록에 없는 것은 복원
+        for (const row of this.hiddenRows) {
+            if (!rows.has(row)) {
+                const saved = this.savedHeights.get(row) ?? DEFAULT_ROW_HEIGHT
+                this.rows.setSize(row, saved)
+                this.savedHeights.delete(row)
+            }
+        }
+        // 새로 숨길 행의 현재 높이를 저장하고 0으로 설정
+        for (const row of rows) {
+            if (!this.hiddenRows.has(row)) {
+                this.savedHeights.set(row, this.rows.getSize(row) || DEFAULT_ROW_HEIGHT)
+                this.rows.setSize(row, 0)
+            }
+        }
+        this.hiddenRows = new Set(rows)
+        this._schedule()
+    }
+
     // ── 좌표 변환 ─────────────────────────────────────────────────────────────
 
     /**
@@ -150,7 +174,7 @@ export class ViewportManager {
         let y = offsetY;
         for (let row = startRow; row <= endRow; row++) {
             const h = this.rows.getSize(row);
-            cb(row, y, h);
+            if (h > 0) cb(row, y, h);
             y += h;
         }
     }
