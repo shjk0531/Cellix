@@ -90,7 +90,12 @@ export function GridCanvas() {
             const history = new HistoryManager()
             const clipboard = new ClipboardManager(selection, history, getCell, setCell)
             const selectionRenderer = new SelectionRenderer(viewport)
-            const gridRenderer = new GridRenderer(viewport, getCell, getCalculatedValue)
+            const gridRenderer = new GridRenderer(
+                viewport,
+                getCell,
+                getCalculatedValue,
+                () => useWorkbookStore.getState().activeSheetId,
+            )
 
             // ── formulaEngine.onChanged 구독 ─────────────────────────────────────
             const unsubFormula = formulaEngine.onChanged((changed) => {
