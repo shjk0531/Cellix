@@ -43,6 +43,7 @@ export class InputManager {
 
     private readonly _editListeners = new Set<EditListener>()
     private readonly _fillListeners = new Set<FillListener>()
+    private readonly _onCommit: (row: number, col: number, value: string) => void
 
     // 이벤트 핸들러 (removeEventListener 에서 동일 참조 필요)
     private readonly _onMouseDown: (e: MouseEvent) => void
@@ -57,10 +58,12 @@ export class InputManager {
         container: HTMLElement,
         viewport: ViewportManager,
         selection: SelectionManager,
+        onCommit: (row: number, col: number, value: string) => void,
     ) {
         this._canvas = canvas
         this._viewport = viewport
         this._selection = selection
+        this._onCommit = onCommit
         this._overlay = this._createOverlay(container)
 
         this._onMouseDown = this._handleMouseDown.bind(this)
@@ -210,7 +213,7 @@ export class InputManager {
     private _commitEdit(): void {
         if (this._mode === 'none') return
 
-        // TODO: cell data store 연동 시 this._overlay.value 를 저장
+        this._onCommit(this._editRow, this._editCol, this._overlay.value)
 
         if (this._mode === 'formula') this._selection.setFormulaMode(false)
         this._mode = 'none'

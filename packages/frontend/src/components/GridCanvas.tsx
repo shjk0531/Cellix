@@ -8,6 +8,7 @@ import { HistoryManager, ClipboardManager } from '../core/history'
 import { GridRenderer } from '../core/renderer'
 import { useWorkbookStore } from '../store/useWorkbookStore'
 import { useUIStore } from '../store/useUIStore'
+import { formulaEngine } from '../workers'
 
 /**
  * 캔버스 기반 스프레드시트 그리드 컴포넌트.
@@ -35,142 +36,188 @@ export function GridCanvas() {
         const ctx = canvas.getContext('2d')
         if (!ctx) return
 
-        // ── 셀 데이터 콜백 (항상 현재 활성 시트 기준) ───────────────────────────
-        const getCell = (row: number, col: number): CellData | null => {
-            const s = useWorkbookStore.getState()
-            return s.getCell(s.activeSheetId, row, col)
-        }
+        let destroyed = false
+        let cleanupFn: (() => void) | null = null
 
-        const setCell = (row: number, col: number, data: CellData | null): void => {
-            const s = useWorkbookStore.getState()
-            s.setCell(s.activeSheetId, row, col, data)
-        }
+        ;(async () => {
+            // ── formulaEngine 초기화 ──────────────────────────────────────────────
+            await formulaEngine.initialize()
+            if (destroyed) return
+            const firstState = useWorkbookStore.getState()
+            await formulaEngine.addSheet(firstState.activeSheetId, firstState.sheets[0].name)
+            if (destroyed) return
 
-        // ── 캔버스 초기 크기 설정 ────────────────────────────────────────────────
-        const initW = container.clientWidth || 800
-        const initH = container.clientHeight || 600
-        canvas.width = initW
-        canvas.height = initH
-
-        // ── 엔진 인스턴스 생성 ────────────────────────────────────────────────────
-        const viewport = new ViewportManager(initW, initH)
-        const selection = new SelectionManager(useWorkbookStore.getState().activeSheetId)
-        const input = new InputManager(canvas, container, viewport, selection)
-        const history = new HistoryManager()
-        const clipboard = new ClipboardManager(selection, history, getCell, setCell)
-        const selectionRenderer = new SelectionRenderer(viewport)
-        const gridRenderer = new GridRenderer(viewport, getCell)
-
-        // ── RAF 렌더 루프용 로컬 상태 (Zustand 읽기 비용 회피) ───────────────────
-        let curSelections: SelectionRange[] = []
-        let curActiveCell: { row: number; col: number } | null = null
-
-        // ── 매니저 구독 ───────────────────────────────────────────────────────────
-
-        const unsubSelection = selection.subscribe((state: SelectionState) => {
-            curSelections = state.selections
-            curActiveCell = state.activeCell
-
-            const ui = useUIStore.getState()
-            ui.setSelectionState(state)
-            ui.setActiveCellData(
-                state.activeCell ? getCell(state.activeCell.row, state.activeCell.col) : null,
-            )
-        })
-
-        const unsubEdit = input.subscribeEdit((state) => {
-            useUIStore.getState().setEditState(state)
-            // 편집 중 활성 셀 값 갱신
-            if (state.mode !== 'none' && curActiveCell) {
-                useUIStore.getState().setActiveCellData(getCell(curActiveCell.row, curActiveCell.col))
+            // ── 셀 데이터 콜백 (항상 현재 활성 시트 기준) ────────────────────────
+            const getCell = (row: number, col: number): CellData | null => {
+                const s = useWorkbookStore.getState()
+                return s.getCell(s.activeSheetId, row, col)
             }
-        })
 
-        const unsubHistory = history.subscribe((state) => {
-            useUIStore.getState().setHistoryState(state)
-        })
-
-        // 잘라내기 소스 변경 시 다음 프레임에서 반영 (별도 작업 없음, render loop가 처리)
-        const unsubCut = clipboard.onCutSourceChange(() => { /* render loop reads getCutSource() */ })
-
-        // 시트 전환 시 SelectionManager sheetId 동기화
-        const unsubWorkbook = useWorkbookStore.subscribe((state, prev) => {
-            if (state.activeSheetId !== prev.activeSheetId) {
-                selection.setSheetId(state.activeSheetId)
+            const setCell = (row: number, col: number, data: CellData | null): void => {
+                const s = useWorkbookStore.getState()
+                s.setCell(s.activeSheetId, row, col, data)
             }
-        })
 
-        // ── 휠 스크롤 ─────────────────────────────────────────────────────────────
-        const onWheel = (e: WheelEvent) => {
-            e.preventDefault()
-            viewport.scrollBy(e.deltaX, e.deltaY)
-        }
-        canvas.addEventListener('wheel', onWheel, { passive: false })
+            const getCalculatedValue = (
+                row: number,
+                col: number,
+            ): string | number | boolean | null => {
+                const s = useWorkbookStore.getState()
+                return s.calculatedValues[`${s.activeSheetId}:${row}:${col}`] ?? null
+            }
 
-        // ── 문서 레벨 단축키 (History / Clipboard) ───────────────────────────────
-        // InputManager의 overlay keydown 이후 버블링 단계에서 처리.
-        // Ctrl 계열은 InputManager가 소비하지 않으므로 중복 처리 없음.
-        const onKeyDown = (e: KeyboardEvent) => {
-            const mod = { shift: e.shiftKey, ctrl: e.ctrlKey || e.metaKey }
+            // ── 입력 확정 콜백 ────────────────────────────────────────────────────
+            const onCommit = (row: number, col: number, value: string): void => {
+                const s = useWorkbookStore.getState()
+                const isFormula = value.startsWith('=')
+                const cellData: CellData = {
+                    value: isFormula ? null : parseTyped(value),
+                    formula: isFormula ? value : undefined,
+                }
+                s.setCell(s.activeSheetId, row, col, cellData)
+            }
 
-            if (history.handleKeyDown(e.key, mod)) {
+            // ── 캔버스 초기 크기 설정 ────────────────────────────────────────────
+            const initW = container.clientWidth || 800
+            const initH = container.clientHeight || 600
+            canvas.width = initW
+            canvas.height = initH
+
+            // ── 엔진 인스턴스 생성 ──────────────────────────────────────────────
+            const viewport = new ViewportManager(initW, initH)
+            const selection = new SelectionManager(useWorkbookStore.getState().activeSheetId)
+            const input = new InputManager(canvas, container, viewport, selection, onCommit)
+            const history = new HistoryManager()
+            const clipboard = new ClipboardManager(selection, history, getCell, setCell)
+            const selectionRenderer = new SelectionRenderer(viewport)
+            const gridRenderer = new GridRenderer(viewport, getCell, getCalculatedValue)
+
+            // ── formulaEngine.onChanged 구독 ─────────────────────────────────────
+            const unsubFormula = formulaEngine.onChanged((changed) => {
+                const prev = useWorkbookStore.getState().calculatedValues
+                const next: Record<string, string | number | boolean | null> = { ...prev }
+                for (const c of changed) {
+                    const key = `${c.sheet_id}:${c.row}:${c.col}`
+                    next[key] = c.value.t === 'nil' ? null : (c.value.v ?? null)
+                }
+                useWorkbookStore.getState().setCalculatedValues(next)
+            })
+
+            // ── RAF 렌더 루프용 로컬 상태 ────────────────────────────────────────
+            let curSelections: SelectionRange[] = []
+            let curActiveCell: { row: number; col: number } | null = null
+
+            // ── 매니저 구독 ──────────────────────────────────────────────────────
+
+            const unsubSelection = selection.subscribe((state: SelectionState) => {
+                curSelections = state.selections
+                curActiveCell = state.activeCell
+
+                const ui = useUIStore.getState()
+                ui.setSelectionState(state)
+                ui.setActiveCellData(
+                    state.activeCell ? getCell(state.activeCell.row, state.activeCell.col) : null,
+                )
+            })
+
+            const unsubEdit = input.subscribeEdit((state) => {
+                useUIStore.getState().setEditState(state)
+                if (state.mode !== 'none' && curActiveCell) {
+                    useUIStore.getState().setActiveCellData(
+                        getCell(curActiveCell.row, curActiveCell.col),
+                    )
+                }
+            })
+
+            const unsubHistory = history.subscribe((state) => {
+                useUIStore.getState().setHistoryState(state)
+            })
+
+            const unsubCut = clipboard.onCutSourceChange(() => {
+                /* render loop reads getCutSource() */
+            })
+
+            // 시트 전환 시 SelectionManager sheetId 동기화
+            const unsubWorkbook = useWorkbookStore.subscribe((state, prev) => {
+                if (state.activeSheetId !== prev.activeSheetId) {
+                    selection.setSheetId(state.activeSheetId)
+                }
+            })
+
+            // ── 휠 스크롤 ─────────────────────────────────────────────────────────
+            const onWheel = (e: WheelEvent) => {
                 e.preventDefault()
-                return
+                viewport.scrollBy(e.deltaX, e.deltaY)
             }
-            if (clipboard.handleKeyDown(e.key, mod)) {
-                e.preventDefault()
+            canvas.addEventListener('wheel', onWheel, { passive: false })
+
+            // ── 문서 레벨 단축키 ──────────────────────────────────────────────────
+            const onKeyDown = (e: KeyboardEvent) => {
+                const mod = { shift: e.shiftKey, ctrl: e.ctrlKey || e.metaKey }
+
+                if (history.handleKeyDown(e.key, mod)) {
+                    e.preventDefault()
+                    return
+                }
+                if (clipboard.handleKeyDown(e.key, mod)) {
+                    e.preventDefault()
+                }
             }
-        }
-        document.addEventListener('keydown', onKeyDown)
+            document.addEventListener('keydown', onKeyDown)
 
-        // ── ResizeObserver ────────────────────────────────────────────────────────
-        const observer = new ResizeObserver((entries) => {
-            const { width, height } = entries[0].contentRect
-            const w = Math.max(1, Math.floor(width))
-            const h = Math.max(1, Math.floor(height))
-            canvas.width = w
-            canvas.height = h
-            viewport.resize(w, h)
-        })
-        observer.observe(container)
+            // ── ResizeObserver ────────────────────────────────────────────────────
+            const observer = new ResizeObserver((entries) => {
+                const { width, height } = entries[0].contentRect
+                const w = Math.max(1, Math.floor(width))
+                const h = Math.max(1, Math.floor(height))
+                canvas.width = w
+                canvas.height = h
+                viewport.resize(w, h)
+            })
+            observer.observe(container)
 
-        // ── RAF 렌더 루프 ─────────────────────────────────────────────────────────
-        let rafId = -1
-        const renderLoop = () => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height)
+            // ── RAF 렌더 루프 ─────────────────────────────────────────────────────
+            let rafId = -1
+            const renderLoop = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-            gridRenderer.draw(ctx)
+                gridRenderer.draw(ctx)
 
-            // clearRect 후 매 프레임 재드로우 필요 → markDirty 호출
-            selectionRenderer.markDirty()
-            selectionRenderer.drawSelections(ctx, curSelections, curActiveCell)
+                selectionRenderer.markDirty()
+                selectionRenderer.drawSelections(ctx, curSelections, curActiveCell)
 
-            // 잘라내기 소스 점선 테두리
-            const cutSource = clipboard.getCutSource()
-            if (cutSource) {
-                _drawCutBorder(ctx, viewport, cutSource)
+                const cutSource = clipboard.getCutSource()
+                if (cutSource) {
+                    _drawCutBorder(ctx, viewport, cutSource)
+                }
+
+                rafId = requestAnimationFrame(renderLoop)
             }
-
             rafId = requestAnimationFrame(renderLoop)
-        }
-        rafId = requestAnimationFrame(renderLoop)
 
-        // ── 정리 ─────────────────────────────────────────────────────────────────
+            // ── 정리 함수 등록 ────────────────────────────────────────────────────
+            cleanupFn = () => {
+                cancelAnimationFrame(rafId)
+                observer.disconnect()
+                document.removeEventListener('keydown', onKeyDown)
+                canvas.removeEventListener('wheel', onWheel)
+                unsubFormula()
+                unsubSelection()
+                unsubEdit()
+                unsubHistory()
+                unsubCut()
+                unsubWorkbook()
+                input.destroy()
+                clipboard.destroy()
+                history.destroy()
+                selection.destroy()
+                viewport.destroy()
+            }
+        })().catch(console.error)
+
         return () => {
-            cancelAnimationFrame(rafId)
-            observer.disconnect()
-            document.removeEventListener('keydown', onKeyDown)
-            canvas.removeEventListener('wheel', onWheel)
-            unsubSelection()
-            unsubEdit()
-            unsubHistory()
-            unsubCut()
-            unsubWorkbook()
-            input.destroy()
-            clipboard.destroy()
-            history.destroy()
-            selection.destroy()
-            viewport.destroy()
+            destroyed = true
+            cleanupFn?.()
         }
     }, []) // 마운트 시 한 번만 실행
 
@@ -182,6 +229,17 @@ export function GridCanvas() {
             <canvas ref={canvasRef} style={{ display: 'block' }} />
         </div>
     )
+}
+
+// ── 입력 값 타입 자동 판별 ────────────────────────────────────────────────────────
+
+function parseTyped(v: string): string | number | boolean | null {
+    if (v === '') return null
+    if (v.toLowerCase() === 'true') return true
+    if (v.toLowerCase() === 'false') return false
+    const n = Number(v)
+    if (!isNaN(n) && v.trim() !== '') return n
+    return v
 }
 
 // ── 잘라내기 소스 점선 테두리 렌더링 ─────────────────────────────────────────────

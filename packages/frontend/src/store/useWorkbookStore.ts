@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { CellData } from '@cellix/shared'
+import { formulaEngine } from '../workers'
 
 export interface SheetInfo {
     id: string
@@ -11,6 +12,8 @@ interface WorkbookState {
     activeSheetId: string
     /** key: `${sheetId}:${row}:${col}` */
     cells: Record<string, CellData>
+    /** WASM에서 받은 계산 결과 캐시. key: `${sheetId}:${row}:${col}` */
+    calculatedValues: Record<string, string | number | boolean | null>
 
     addSheet: () => void
     deleteSheet: (id: string) => void
@@ -18,6 +21,7 @@ interface WorkbookState {
     setActiveSheet: (id: string) => void
     setCell: (sheetId: string, row: number, col: number, data: CellData | null) => void
     getCell: (sheetId: string, row: number, col: number) => CellData | null
+    setCalculatedValues: (values: Record<string, string | number | boolean | null>) => void
 }
 
 let _counter = 1
@@ -37,31 +41,40 @@ export const useWorkbookStore = create<WorkbookState>()((set, get) => {
         sheets: [{ id: firstId, name: 'Sheet1' }],
         activeSheetId: firstId,
         cells: {},
+        calculatedValues: {},
 
-        addSheet: () =>
+        addSheet: () => {
+            const id = mkId()
             set((state) => {
-                const id = mkId()
                 const name = `Sheet${state.sheets.length + 1}`
                 return { sheets: [...state.sheets, { id, name }], activeSheetId: id }
-            }),
+            })
+            const name = get().sheets.find((s) => s.id === id)?.name ?? 'Sheet'
+            formulaEngine.addSheet(id, name).catch(console.error)
+        },
 
-        deleteSheet: (id) =>
+        deleteSheet: (id) => {
+            if (get().sheets.length <= 1) return
             set((state) => {
-                if (state.sheets.length <= 1) return state
                 const sheets = state.sheets.filter((s) => s.id !== id)
                 const activeSheetId =
                     state.activeSheetId === id ? sheets[0].id : state.activeSheetId
                 return { sheets, activeSheetId }
-            }),
+            })
+            formulaEngine.removeSheet(id).catch(console.error)
+        },
 
         renameSheet: (id, name) =>
             set((state) => ({
                 sheets: state.sheets.map((s) => (s.id === id ? { ...s, name } : s)),
             })),
 
-        setActiveSheet: (id) => set({ activeSheetId: id }),
+        setActiveSheet: (id) => {
+            set({ activeSheetId: id })
+            formulaEngine.setActiveSheet(id).catch(console.error)
+        },
 
-        setCell: (sheetId, row, col, data) =>
+        setCell: (sheetId, row, col, data) => {
             set((state) => {
                 const key = cellKey(sheetId, row, col)
                 if (data === null) {
@@ -69,9 +82,15 @@ export const useWorkbookStore = create<WorkbookState>()((set, get) => {
                     return { cells: rest }
                 }
                 return { cells: { ...state.cells, [key]: data } }
-            }),
+            })
+            formulaEngine
+                .setCell(sheetId, row, col, data?.value ?? null, data?.formula)
+                .catch(console.error)
+        },
 
         getCell: (sheetId, row, col) =>
             get().cells[cellKey(sheetId, row, col)] ?? null,
+
+        setCalculatedValues: (values) => set({ calculatedValues: values }),
     }
 })
