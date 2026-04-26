@@ -1,4 +1,4 @@
-FROM node:20-alpine AS base
+FROM node:22-alpine AS base
 # Patch Alpine packages to eliminate known high/critical CVEs
 RUN apk upgrade --no-cache && npm install -g pnpm
 
