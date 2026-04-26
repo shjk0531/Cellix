@@ -2,6 +2,7 @@ import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import jwt from '@fastify/jwt'
 import cookie from '@fastify/cookie'
+import { ZodError } from 'zod'
 import { env } from './config/env.js'
 import dbPlugin from './plugins/db.plugin.js'
 import redisPlugin from './plugins/redis.plugin.js'
@@ -36,6 +37,13 @@ export async function buildApp() {
     })
 
     app.setErrorHandler((error, _request, reply) => {
+        if (error instanceof ZodError) {
+            return reply.status(422).send({
+                success: false,
+                error: error.errors[0]?.message ?? 'Validation error',
+                code: 'VALIDATION_ERROR',
+            })
+        }
         app.log.error(error)
         if ('statusCode' in error && typeof error.statusCode === 'number' && error.statusCode < 500) {
             return reply.status(error.statusCode).send({
