@@ -2,14 +2,12 @@ import type { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
 import { eq, and, sql, count, desc } from 'drizzle-orm'
 import { submissions, userProgress, problems } from '../db/schema.js'
-import { deserializeWorkbook } from '@cellix/shared'
-import type { SerializedWorkbookData } from '@cellix/shared'
 import { gradingService } from '../services/grading.service.js'
 import type { GradingConfig } from '../services/grading.service.js'
 
 const SubmitBody = z.object({
     problemId: z.string().uuid(),
-    submittedWorkbook: z.unknown(),
+    workbookData: z.unknown(),
     timeSpentSeconds: z.number().int().min(0).optional(),
 })
 
@@ -17,10 +15,6 @@ const PaginationQuery = z.object({
     page: z.coerce.number().int().min(1).default(1),
     limit: z.coerce.number().int().min(1).max(50).default(10),
 })
-
-const EMPTY_WORKBOOK: SerializedWorkbookData = {
-    id: '', name: '', sheets: {}, sheetOrder: [], activeSheetId: '', createdAt: '', updatedAt: '',
-}
 
 export const submissionRoutes: FastifyPluginAsync = async (app) => {
     // ── 제출 + 즉시 채점 ────────────────────────────────────────────────────────
@@ -35,20 +29,13 @@ export const submissionRoutes: FastifyPluginAsync = async (app) => {
             return reply.status(404).send({ success: false, error: 'Problem not found', code: 'NOT_FOUND' })
         }
 
-        // 워크북 역직렬화
-        const submittedWb = deserializeWorkbook(
-            (body.submittedWorkbook as SerializedWorkbookData) ?? EMPTY_WORKBOOK,
-        )
-        const answerWb = deserializeWorkbook(
-            (problem.answerWorkbook as unknown as SerializedWorkbookData) ?? EMPTY_WORKBOOK,
-        )
         const config = (problem.gradingConfig as unknown as GradingConfig)
 
-        // 채점
+        // 채점 (deserializeWorkbook은 grading.service 내부에서 호출)
         let gradingResult
         let submissionStatus: 'graded' | 'error' = 'graded'
         try {
-            gradingResult = await gradingService.grade(submittedWb, answerWb, config)
+            gradingResult = await gradingService.grade(body.workbookData, config)
         } catch (err) {
             app.log.error({ err }, 'Grading failed')
             gradingResult = {
@@ -57,6 +44,7 @@ export const submissionRoutes: FastifyPluginAsync = async (app) => {
                 percentage: 0,
                 status: 'fail' as const,
                 cellResults: [],
+                tableResults: [],
                 feedback: '채점 중 오류가 발생했습니다.',
             }
             submissionStatus = 'error'
@@ -68,7 +56,7 @@ export const submissionRoutes: FastifyPluginAsync = async (app) => {
             .values({
                 userId: request.userId,
                 problemId: body.problemId,
-                submittedWorkbook: body.submittedWorkbook as Record<string, unknown>,
+                submittedWorkbook: body.workbookData as Record<string, unknown>,
                 totalScore: String(gradingResult.totalScore),
                 maxScore: gradingResult.maxScore,
                 percentage: String(gradingResult.percentage),

@@ -51,9 +51,10 @@ export function serializeWorkbook(workbook: WorkbookData): SerializedWorkbookDat
     }
 }
 
-export function deserializeWorkbook(data: SerializedWorkbookData): WorkbookData {
+export function deserializeWorkbook(raw: unknown): WorkbookData {
+    const data = raw as SerializedWorkbookData
     const sheets = new Map<string, SheetData>()
-    for (const [sheetId, sheet] of Object.entries(data.sheets)) {
+    for (const [sheetId, sheet] of Object.entries(data.sheets ?? {})) {
         sheets.set(sheetId, {
             id: sheet.id,
             name: sheet.name,
