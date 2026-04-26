@@ -52,6 +52,12 @@ PostgreSQL: 5432
 Redis:      6379
 ```
 
+WASM 빌드 타겟:
+pkg/ → --target web (브라우저, Web Worker에서 사용)
+pkg-node/ → --target nodejs (Node.js 백엔드 채점 서비스에서 사용)
+
+두 타겟 모두 동일한 Rust 소스에서 빌드되므로 수식 계산 결과가 완벽히 동일.
+
 ---
 
 ## 2. 모노레포 구조
@@ -475,6 +481,25 @@ await formulaEngine.registerTable(
     }),
 );
 ```
+
+### Node.js에서 WASM 사용 (백엔드)
+
+Node.js 타겟은 init() 없이 바로 사용 가능:
+
+// ✅ 올바름 — Node.js에서는 동기 로드
+import { FormulaEngine } from 'formula-engine-node'
+const engine = new FormulaEngine() // init() 불필요
+engine.add_sheet('s1', 'Sheet1')
+
+// ❌ 금지 — 백엔드에서 HyperFormula 사용
+import HyperFormula from 'hyperformula' // 사용 금지, 결과 불일치 위험
+
+### 채점 시 주의사항
+
+grading.service.ts 에서:
+
+- FormulaEngine 인스턴스는 요청마다 새로 생성 (싱글톤 X — 상태 격리 필요)
+- batch_set()으로 한번에 로드 (셀마다 set_cell() 반복 X — 성능)
 
 ---
 

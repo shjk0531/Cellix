@@ -138,6 +138,10 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
+# WASM build outputs
+packages/formula-engine/pkg/
+packages/formula-engine/pkg-node/
+
 # OS
 .DS_Store
 Thumbs.db

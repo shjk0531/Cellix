@@ -41,6 +41,9 @@ importers:
       fastify-plugin:
         specifier: ^5.1.0
         version: 5.1.0
+      formula-engine-node:
+        specifier: workspace:*
+        version: link:../formula-engine/pkg-node
       hyperformula:
         specifier: ^3.2.0
         version: 3.2.0
@@ -74,6 +77,8 @@ importers:
         version: 5.9.3
 
   packages/formula-engine/pkg: {}
+
+  packages/formula-engine/pkg-node: {}
 
   packages/frontend:
     dependencies:
