@@ -6,6 +6,9 @@ import type { SelectionRange, SelectionState } from '../core/selection'
 import { InputManager } from '../core/input'
 import { HistoryManager, ClipboardManager } from '../core/history'
 import { GridRenderer } from '../core/renderer'
+import { filterManager } from '../core/data'
+import type { FilterCriteria } from '../core/data'
+import { FilterDropdown } from './FilterDropdown'
 import { useWorkbookStore } from '../store/useWorkbookStore'
 import { useUIStore } from '../store/useUIStore'
 import { formulaEngine } from '../workers'
@@ -24,9 +27,19 @@ import { formulaEngine } from '../workers'
  *
  * 변경사항은 useWorkbookStore / useUIStore로 푸시되어 다른 React 컴포넌트가 구독.
  */
+type FilterDropdownState = {
+    col: number
+    position: { x: number; y: number }
+    uniqueValues: string[]
+    sheetId: string
+    currentCriteria: FilterCriteria | undefined
+}
+
 export function GridCanvas() {
     const containerRef = useRef<HTMLDivElement>(null)
     const canvasRef = useRef<HTMLCanvasElement>(null)
+    const getCellRef = useRef<((row: number, col: number) => CellData | null) | null>(null)
+    const [filterDropdown, setFilterDropdown] = React.useState<FilterDropdownState | null>(null)
 
     useEffect(() => {
         const container = containerRef.current
@@ -57,6 +70,8 @@ export function GridCanvas() {
                 const s = useWorkbookStore.getState()
                 s.setCell(s.activeSheetId, row, col, data)
             }
+
+            getCellRef.current = getCell
 
             const getCalculatedValue = (
                 row: number,
@@ -90,7 +105,12 @@ export function GridCanvas() {
             const history = new HistoryManager()
             const clipboard = new ClipboardManager(selection, history, getCell, setCell)
             const selectionRenderer = new SelectionRenderer(viewport)
-            const gridRenderer = new GridRenderer(viewport, getCell, getCalculatedValue)
+            const gridRenderer = new GridRenderer(
+                viewport,
+                getCell,
+                getCalculatedValue,
+                () => useWorkbookStore.getState().activeSheetId,
+            )
 
             // ── formulaEngine.onChanged 구독 ─────────────────────────────────────
             const unsubFormula = formulaEngine.onChanged((changed) => {
@@ -137,10 +157,17 @@ export function GridCanvas() {
                 /* render loop reads getCutSource() */
             })
 
-            // 시트 전환 시 SelectionManager sheetId 동기화
+            // filterManager 변경 시 viewport 숨김 행 동기화
+            const unsubFilter = filterManager.subscribe(() => {
+                const s = useWorkbookStore.getState()
+                viewport.setHiddenRows(filterManager.hiddenRows.get(s.activeSheetId) ?? new Set())
+            })
+
+            // 시트 전환 시 SelectionManager sheetId 및 숨김 행 동기화
             const unsubWorkbook = useWorkbookStore.subscribe((state, prev) => {
                 if (state.activeSheetId !== prev.activeSheetId) {
                     selection.setSheetId(state.activeSheetId)
+                    viewport.setHiddenRows(filterManager.hiddenRows.get(state.activeSheetId) ?? new Set())
                 }
             })
 
@@ -150,6 +177,37 @@ export function GridCanvas() {
                 viewport.scrollBy(e.deltaX, e.deltaY)
             }
             canvas.addEventListener('wheel', onWheel, { passive: false })
+
+            // ── 필터 아이콘 클릭 감지 ──────────────────────────────────────────────
+            const onCanvasClick = (e: MouseEvent) => {
+                const s = useWorkbookStore.getState()
+                const af = filterManager.getAutoFilter(s.activeSheetId)
+                if (!af) return
+
+                const rect = canvas.getBoundingClientRect()
+                const cx = e.clientX - rect.left
+                const cy = e.clientY - rect.top
+
+                const { row, col } = viewport.pixelToCell(cx, cy)
+                if (row !== af.headerRow || col < af.startCol || col > af.endCol) return
+
+                const cellPixel = viewport.cellToPixel(row, col)
+                const cellW = viewport.getColWidth(col)
+                if (cx < cellPixel.x + cellW - 20) return
+
+                e.stopPropagation()
+                const dataRows: number[] = []
+                for (let r = af.headerRow + 1; r <= af.endRow; r++) dataRows.push(r)
+
+                setFilterDropdown({
+                    col,
+                    position: { x: cellPixel.x, y: cellPixel.y + viewport.getRowHeight(row) },
+                    uniqueValues: filterManager.getUniqueValues(s.activeSheetId, col, dataRows, getCell),
+                    sheetId: s.activeSheetId,
+                    currentCriteria: af.criteria.get(col),
+                })
+            }
+            canvas.addEventListener('click', onCanvasClick)
 
             // ── 문서 레벨 단축키 ──────────────────────────────────────────────────
             const onKeyDown = (e: KeyboardEvent) => {
@@ -201,7 +259,9 @@ export function GridCanvas() {
                 observer.disconnect()
                 document.removeEventListener('keydown', onKeyDown)
                 canvas.removeEventListener('wheel', onWheel)
+                canvas.removeEventListener('click', onCanvasClick)
                 unsubFormula()
+                unsubFilter()
                 unsubSelection()
                 unsubEdit()
                 unsubHistory()
@@ -227,6 +287,23 @@ export function GridCanvas() {
             style={{ position: 'relative', flex: 1, overflow: 'hidden', minHeight: 0 }}
         >
             <canvas ref={canvasRef} style={{ display: 'block' }} />
+            {filterDropdown && (
+                <FilterDropdown
+                    col={filterDropdown.col}
+                    uniqueValues={filterDropdown.uniqueValues}
+                    currentCriteria={filterDropdown.currentCriteria}
+                    position={filterDropdown.position}
+                    onApply={(criteria) => {
+                        const s = useWorkbookStore.getState()
+                        const gc = getCellRef.current
+                        if (gc) {
+                            filterManager.applyFilter(s.activeSheetId, filterDropdown.col, criteria, gc)
+                        }
+                        setFilterDropdown(null)
+                    }}
+                    onClose={() => setFilterDropdown(null)}
+                />
+            )}
         </div>
     )
 }
