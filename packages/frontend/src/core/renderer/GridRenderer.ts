@@ -5,6 +5,7 @@ import { NumberFormatter } from '../style/NumberFormatter'
 import { conditionalFormatManager } from '../conditional'
 import type { CondFmtCellResult } from '../conditional'
 import { filterManager } from '../data'
+import { tableManager, TableStyleRenderer } from '../table'
 
 function borderLineWidth(style: BorderStyle): number {
     switch (style) {
@@ -103,8 +104,12 @@ export class GridRenderer {
 
                 const baseStyle = styleManager.getStyle(sheetId, row, col)
 
-                // 배경색: 조건부 서식이 있으면 우선 적용
-                const bgColor = cfResult.style?.backgroundColor ?? baseStyle.backgroundColor
+                // 표 스타일 (우선순위 최하위)
+                const _tbl = tableManager.getTableAt(sheetId, row, col)
+                const _tblStyle = _tbl ? TableStyleRenderer.getCellStyleForTable(_tbl, row, col) : null
+
+                // 배경색: 조건부 서식 > 명시적 스타일 > 표 스타일
+                const bgColor = cfResult.style?.backgroundColor ?? baseStyle.backgroundColor ?? _tblStyle?.backgroundColor
                 if (bgColor) {
                     ctx.fillStyle = bgColor
                     ctx.fillRect(x, y, w, h)
@@ -151,16 +156,24 @@ export class GridRenderer {
                 const baseStyle = styleManager.getStyle(sheetId, row, col)
                 const cfResult = cfCache.get(`${row}:${col}`) ?? {}
 
-                // 조건부 서식 스타일을 baseStyle에 오버레이 (조건부 서식 우선)
+                // 표 스타일 조회 (배경 패스와 별도로 다시 조회 — 텍스트 패스 루프)
+                const tblAt = tableManager.getTableAt(sheetId, row, col)
+                const tblStyle = tblAt ? TableStyleRenderer.getCellStyleForTable(tblAt, row, col) : null
+
+                // 우선순위: cfResult > baseStyle > tblStyle
+                const mergedBase: CellStyle = tblStyle
+                    ? { ...tblStyle, ...baseStyle, font: { ...tblStyle.font, ...baseStyle.font } }
+                    : baseStyle
+
                 const style: CellStyle = cfResult.style
                     ? {
-                        ...baseStyle,
+                        ...mergedBase,
                         ...cfResult.style,
                         font: cfResult.style.font
-                            ? { ...baseStyle.font, ...cfResult.style.font }
-                            : baseStyle.font,
+                            ? { ...mergedBase.font, ...cfResult.style.font }
+                            : mergedBase.font,
                     }
-                    : baseStyle
+                    : mergedBase
 
                 const rawValue = calcVal !== null && calcVal !== undefined
                     ? calcVal
@@ -228,12 +241,23 @@ export class GridRenderer {
                     }
                 }
 
-                // 4f. 자동 필터 ▼ 아이콘 (헤더 행)
+                // 4f. 자동 필터 ▼ 아이콘 (헤더 행 — filterManager 기반)
                 const _af = filterManager.getAutoFilter(sheetId)
                 if (_af && row === _af.headerRow && col >= _af.startCol && col <= _af.endCol) {
                     const hasFilter = _af.criteria.has(col)
                     ctx.save()
                     ctx.fillStyle = hasFilter ? '#1a73e8' : '#5f6368'
+                    ctx.font = `9px system-ui, -apple-system, sans-serif`
+                    ctx.textAlign = 'right'
+                    ctx.textBaseline = 'middle'
+                    ctx.fillText('▼', x + w - 3, y + h / 2)
+                    ctx.restore()
+                }
+
+                // 4f-2. 표 헤더 행 ▼ 아이콘
+                if (tblAt && tblAt.showHeaderRow && row === tblAt.range.start.row) {
+                    ctx.save()
+                    ctx.fillStyle = '#5f6368'
                     ctx.font = `9px system-ui, -apple-system, sans-serif`
                     ctx.textAlign = 'right'
                     ctx.textBaseline = 'middle'

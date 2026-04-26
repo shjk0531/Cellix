@@ -111,6 +111,14 @@ export class FormulaEngineClient {
     return JSON.parse(json) as string[]
   }
 
+  async registerTable(tableJson: string): Promise<void> {
+    await this._send({ type: 'REGISTER_TABLE', tableJson })
+  }
+
+  async unregisterTable(tableId: string): Promise<void> {
+    await this._send({ type: 'UNREGISTER_TABLE', tableId })
+  }
+
   onChanged(listener: Listener): () => void {
     this.listeners.add(listener)
     return () => this.listeners.delete(listener)
