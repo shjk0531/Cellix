@@ -3,6 +3,7 @@ import type { CellRange, CellStyle } from '@cellix/shared'
 import { useUIStore } from '../store/useUIStore'
 import { useWorkbookStore } from '../store/useWorkbookStore'
 import { styleManager } from '../core/style/StyleManager'
+import { ChartInsertDialog } from './dialogs/ChartInsertDialog'
 
 const BTN: React.CSSProperties = {
     display: 'inline-flex',
@@ -97,6 +98,8 @@ function Btn({ label, title, style, active, disabled, onClick }: BtnProps) {
 export function Toolbar() {
     const { canUndo, canRedo, activeCell, selections } = useUIStore()
     const activeSheetId = useWorkbookStore((s) => s.activeSheetId)
+    const [showChartInsert, setShowChartInsert] = React.useState(false)
+    const [chartInsertRange, setChartInsertRange] = React.useState<CellRange | null>(null)
 
     // styleManager 변경 시 리렌더링
     const [, setStyleVersion] = React.useState(0)
@@ -358,6 +361,28 @@ export function Toolbar() {
                 title="소수점 줄이기"
                 onClick={() => adjustDecimals(-1)}
             />
+
+            <div style={SEP} />
+
+            {/* 차트 삽입 */}
+            <Btn
+                label="📊"
+                title="차트 삽입"
+                style={{ fontSize: 16 }}
+                onClick={() => {
+                    const ranges = getSelectedRanges()
+                    setChartInsertRange(ranges[0] ?? null)
+                    setShowChartInsert(true)
+                }}
+            />
+
+            {showChartInsert && (
+                <ChartInsertDialog
+                    sheetId={activeSheetId}
+                    initialRange={chartInsertRange ?? undefined}
+                    onClose={() => setShowChartInsert(false)}
+                />
+            )}
         </div>
     )
 }

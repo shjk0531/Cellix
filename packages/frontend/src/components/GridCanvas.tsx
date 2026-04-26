@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react'
+import React, { useRef, useEffect, useState } from 'react'
 import type { CellData } from '@cellix/shared'
 import { ViewportManager } from '../core/viewport'
 import { SelectionManager, SelectionRenderer } from '../core/selection'
@@ -9,7 +9,9 @@ import { GridRenderer } from '../core/renderer'
 import { filterManager } from '../core/data'
 import type { FilterCriteria } from '../core/data'
 import { tableManager } from '../core/table'
+import { chartManager } from '../core/chart'
 import { FilterDropdown } from './FilterDropdown'
+import { ChartOverlay } from './ChartOverlay'
 import { useWorkbookStore } from '../store/useWorkbookStore'
 import { useUIStore } from '../store/useUIStore'
 import { formulaEngine } from '../workers'
@@ -41,6 +43,15 @@ export function GridCanvas() {
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const getCellRef = useRef<((row: number, col: number) => CellData | null) | null>(null)
     const [filterDropdown, setFilterDropdown] = React.useState<FilterDropdownState | null>(null)
+
+    // ── 차트 오버레이 상태 ─────────────────────────────────────────────────────
+    const activeSheetId = useWorkbookStore(s => s.activeSheetId)
+    const viewportRef = useRef<ViewportManager | null>(null)
+    const getCellBySheetRef = useRef<((sheetId: string, row: number, col: number) => CellData | null) | null>(null)
+    const [isEngineReady, setIsEngineReady] = useState(false)
+    const [selectedChartId, setSelectedChartId] = useState<string | null>(null)
+    const [chartDataVersion, setChartDataVersion] = useState(0)
+    const [, setChartListVersion] = useState(0)
 
     useEffect(() => {
         const container = containerRef.current
@@ -141,6 +152,17 @@ export function GridCanvas() {
                 () => useWorkbookStore.getState().activeSheetId,
             )
 
+            // ── 차트 오버레이 연결 ────────────────────────────────────────────────
+            viewportRef.current = viewport
+            getCellBySheetRef.current = (sid: string, r: number, c: number) =>
+                useWorkbookStore.getState().getCell(sid, r, c)
+            setIsEngineReady(true)
+
+            // chartManager 변경 시 차트 목록 버전 업데이트
+            const unsubCharts = chartManager.subscribe(() =>
+                setChartListVersion(v => v + 1),
+            )
+
             // ── formulaEngine.onChanged 구독 ─────────────────────────────────────
             const unsubFormula = formulaEngine.onChanged((changed) => {
                 const prev = useWorkbookStore.getState().calculatedValues
@@ -150,6 +172,8 @@ export function GridCanvas() {
                     next[key] = c.value.t === 'nil' ? null : (c.value.v ?? null)
                 }
                 useWorkbookStore.getState().setCalculatedValues(next)
+                // 차트 데이터 자동 갱신
+                setChartDataVersion(v => v + 1)
             })
 
             // ── RAF 렌더 루프용 로컬 상태 ────────────────────────────────────────
@@ -290,6 +314,7 @@ export function GridCanvas() {
                 canvas.removeEventListener('wheel', onWheel)
                 canvas.removeEventListener('click', onCanvasClick)
                 unsubFormula()
+                unsubCharts()
                 unsubFilter()
                 unsubSelection()
                 unsubEdit()
@@ -315,7 +340,21 @@ export function GridCanvas() {
             ref={containerRef}
             style={{ position: 'relative', flex: 1, overflow: 'hidden', minHeight: 0 }}
         >
-            <canvas ref={canvasRef} style={{ display: 'block' }} />
+            <canvas
+                ref={canvasRef}
+                style={{ display: 'block' }}
+                onMouseDown={() => setSelectedChartId(null)}
+            />
+            {isEngineReady && viewportRef.current && getCellBySheetRef.current && (
+                <ChartOverlay
+                    sheetId={activeSheetId}
+                    viewport={viewportRef.current}
+                    getCell={getCellBySheetRef.current}
+                    selectedChartId={selectedChartId}
+                    onChartSelect={setSelectedChartId}
+                    dataVersion={chartDataVersion}
+                />
+            )}
             {filterDropdown && (
                 <FilterDropdown
                     col={filterDropdown.col}
