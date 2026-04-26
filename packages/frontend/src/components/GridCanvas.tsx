@@ -8,6 +8,7 @@ import { HistoryManager, ClipboardManager } from '../core/history'
 import { GridRenderer } from '../core/renderer'
 import { filterManager } from '../core/data'
 import type { FilterCriteria } from '../core/data'
+import { tableManager } from '../core/table'
 import { FilterDropdown } from './FilterDropdown'
 import { useWorkbookStore } from '../store/useWorkbookStore'
 import { useUIStore } from '../store/useUIStore'
@@ -90,6 +91,14 @@ export function GridCanvas() {
                     formula: isFormula ? value : undefined,
                 }
                 s.setCell(s.activeSheetId, row, col, cellData)
+
+                // 표 자동 확장 감지
+                const tableId = tableManager.checkAutoExpand(s.activeSheetId, row, col, getCell)
+                if (tableId) {
+                    tableManager.expandTable(tableId, (r, c, data) =>
+                        s.setCell(s.activeSheetId, r, c, data ?? { value: null }),
+                    )
+                }
             }
 
             // ── 캔버스 초기 크기 설정 ────────────────────────────────────────────
@@ -102,6 +111,26 @@ export function GridCanvas() {
             const viewport = new ViewportManager(initW, initH)
             const selection = new SelectionManager(useWorkbookStore.getState().activeSheetId)
             const input = new InputManager(canvas, container, viewport, selection, onCommit)
+            input.setCreateTableCallback(() => {
+                const s = useWorkbookStore.getState()
+                const selState = selection.getState()
+                const { selections, activeCell } = selState
+                let r1: number, c1: number, r2: number, c2: number
+                if (selections.length > 0) {
+                    const sel = selections[0]
+                    r1 = Math.min(sel.start.row, sel.end.row)
+                    c1 = Math.min(sel.start.col, sel.end.col)
+                    r2 = Math.max(sel.start.row, sel.end.row)
+                    c2 = Math.max(sel.start.col, sel.end.col)
+                } else if (activeCell) {
+                    r1 = r2 = activeCell.row
+                    c1 = c2 = activeCell.col
+                } else {
+                    return
+                }
+                tableManager.createTable(s.activeSheetId, r1, c1, r2, c2, getCell)
+                    .catch((err) => console.error('[TableManager] createTable failed:', err))
+            })
             const history = new HistoryManager()
             const clipboard = new ClipboardManager(selection, history, getCell, setCell)
             const selectionRenderer = new SelectionRenderer(viewport)

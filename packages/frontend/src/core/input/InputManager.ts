@@ -44,6 +44,7 @@ export class InputManager {
     private readonly _editListeners = new Set<EditListener>()
     private readonly _fillListeners = new Set<FillListener>()
     private readonly _onCommit: (row: number, col: number, value: string) => void
+    private _onCreateTable: (() => void) | undefined
 
     // 이벤트 핸들러 (removeEventListener 에서 동일 참조 필요)
     private readonly _onMouseDown: (e: MouseEvent) => void
@@ -82,6 +83,10 @@ export class InputManager {
     }
 
     // ── 퍼블릭 API ──────────────────────────────────────────────────────────────
+
+    setCreateTableCallback(cb: () => void): void {
+        this._onCreateTable = cb
+    }
 
     subscribeEdit(listener: EditListener): () => void {
         this._editListeners.add(listener)
@@ -395,6 +400,12 @@ export class InputManager {
     }
 
     private _handleNavKeyDown(e: KeyboardEvent): void {
+        if (e.ctrlKey && e.key === 't') {
+            e.preventDefault()
+            this._onCreateTable?.()
+            return
+        }
+
         if (e.key === 'F2') {
             const active = this._selection.getActiveCell()
             if (active) this._enterEditMode(active.row, active.col)
