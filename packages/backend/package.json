@@ -16,6 +16,7 @@
     },
     "dependencies": {
         "@cellix/shared": "workspace:*",
+        "formula-engine-node": "workspace:*",
         "@fastify/cookie": "^11.0.2",
         "@fastify/cors": "^9.0.1",
         "@fastify/jwt": "^10.0.0",
@@ -24,6 +25,7 @@
         "drizzle-orm": "^0.45.2",
         "fastify": "^4.28.1",
         "fastify-plugin": "^5.1.0",
+        "hyperformula": "^3.2.0",
         "pino-pretty": "^13.1.3",
         "postgres": "^3.4.9",
         "xlsx": "^0.18.5",

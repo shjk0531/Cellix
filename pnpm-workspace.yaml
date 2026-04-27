@@ -1,3 +1,4 @@
 packages:
   - "packages/*"
   - "packages/formula-engine/pkg"
+  - "packages/formula-engine/pkg-node"
