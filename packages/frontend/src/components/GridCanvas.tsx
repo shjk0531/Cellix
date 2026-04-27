@@ -157,6 +157,7 @@ export function GridCanvas() {
             getCellBySheetRef.current = (sid: string, r: number, c: number) =>
                 useWorkbookStore.getState().getCell(sid, r, c)
             setIsEngineReady(true)
+            useWorkbookStore.getState().setEngineReady(true)
 
             // chartManager 변경 시 차트 목록 버전 업데이트
             const unsubCharts = chartManager.subscribe(() =>

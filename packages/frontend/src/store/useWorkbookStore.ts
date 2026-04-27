@@ -14,6 +14,8 @@ interface WorkbookState {
     cells: Record<string, CellData>
     /** WASM에서 받은 계산 결과 캐시. key: `${sheetId}:${row}:${col}` */
     calculatedValues: Record<string, string | number | boolean | null>
+    /** GridCanvas의 formulaEngine 초기화 완료 여부 */
+    engineReady: boolean
 
     addSheet: () => void
     deleteSheet: (id: string) => void
@@ -22,6 +24,7 @@ interface WorkbookState {
     setCell: (sheetId: string, row: number, col: number, data: CellData | null) => void
     getCell: (sheetId: string, row: number, col: number) => CellData | null
     setCalculatedValues: (values: Record<string, string | number | boolean | null>) => void
+    setEngineReady: (ready: boolean) => void
 }
 
 let _counter = 1
@@ -42,6 +45,7 @@ export const useWorkbookStore = create<WorkbookState>()((set, get) => {
         activeSheetId: firstId,
         cells: {},
         calculatedValues: {},
+        engineReady: false,
 
         addSheet: () => {
             const id = mkId()
@@ -92,5 +96,6 @@ export const useWorkbookStore = create<WorkbookState>()((set, get) => {
             get().cells[cellKey(sheetId, row, col)] ?? null,
 
         setCalculatedValues: (values) => set({ calculatedValues: values }),
+        setEngineReady: (ready) => set({ engineReady: ready }),
     }
 })
