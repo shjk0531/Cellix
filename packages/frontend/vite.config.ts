@@ -11,6 +11,18 @@ export default defineConfig({
             "@cellix/shared": path.resolve(__dirname, "../shared/src/index.ts"),
         },
     },
+    build: {
+        target: 'es2022',
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    'react-vendor': ['react', 'react-dom'],
+                    'zustand': ['zustand'],
+                    'router': ['react-router-dom'],
+                },
+            },
+        },
+    },
     server: {
         port: 5173,
         host: "0.0.0.0",

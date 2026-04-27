@@ -35,7 +35,7 @@ const TAB_ACTIVE: React.CSSProperties = {
  * - × 클릭: 시트 삭제 (1개 이상일 때)
  * - + 버튼: 시트 추가
  */
-export function SheetTabs() {
+export const SheetTabs = React.memo(function SheetTabs() {
     const { sheets, activeSheetId, addSheet, deleteSheet, renameSheet, setActiveSheet } =
         useWorkbookStore()
 
@@ -164,4 +164,4 @@ export function SheetTabs() {
             </button>
         </div>
     )
-}
+})
