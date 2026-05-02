@@ -1,0 +1,23 @@
+# Git
+.git
+.gitignore
+
+# 빌드 산출물 — Docker 내부에서 빌드
+packages/formula-engine/target
+packages/formula-engine/pkg
+packages/formula-engine/pkg-node
+packages/frontend/dist
+packages/backend/dist
+packages/shared/dist
+
+# Node 의존성 — Docker 내부에서 설치
+node_modules
+packages/*/node_modules
+
+# 환경 변수 — 이미지에 포함 금지
+.env
+.env.*
+
+# 개발 전용 파일
+**/*.log
+.DS_Store
