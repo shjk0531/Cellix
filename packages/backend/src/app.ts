@@ -51,14 +51,11 @@ export async function buildApp() {
             });
         }
         app.log.error(error);
-        if (
-            "statusCode" in error &&
-            typeof error.statusCode === "number" &&
-            error.statusCode < 500
-        ) {
-            return reply.status(error.statusCode).send({
+        const httpError = error as { statusCode?: number; message: string };
+        if (typeof httpError.statusCode === "number" && httpError.statusCode < 500) {
+            return reply.status(httpError.statusCode).send({
                 success: false,
-                error: error.message,
+                error: httpError.message,
                 code: "VALIDATION_ERROR",
             });
         }
