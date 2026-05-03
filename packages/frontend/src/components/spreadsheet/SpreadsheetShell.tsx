@@ -1,8 +1,8 @@
-import React from 'react'
-import { Toolbar } from './Toolbar'
-import { FormulaBar } from './FormulaBar'
-import { GridCanvas } from './GridCanvas'
-import { SheetTabs } from './SheetTabs'
+import React from "react";
+import { Toolbar } from "./Toolbar";
+import { FormulaBar } from "./FormulaBar";
+import { GridCanvas } from "./GridCanvas";
+import { SheetTabs } from "./SheetTabs";
 
 /**
  * 스프레드시트 전체 레이아웃 컨테이너.
@@ -21,19 +21,19 @@ import { SheetTabs } from './SheetTabs'
  *   └────────────────────────────┘
  */
 interface SpreadsheetShellProps {
-    style?: React.CSSProperties
+    style?: React.CSSProperties;
 }
 
 export function SpreadsheetShell({ style }: SpreadsheetShellProps = {}) {
     return (
         <div
             style={{
-                display: 'flex',
-                flexDirection: 'column',
-                width: '100%',
-                height: '100%',
-                overflow: 'hidden',
-                background: '#f8f9fa',
+                display: "flex",
+                flexDirection: "column",
+                width: "100%",
+                height: "100%",
+                overflow: "hidden",
+                background: "#f8f9fa",
                 ...style,
             }}
         >
@@ -42,5 +42,5 @@ export function SpreadsheetShell({ style }: SpreadsheetShellProps = {}) {
             <GridCanvas />
             <SheetTabs />
         </div>
-    )
+    );
 }

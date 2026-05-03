@@ -10,12 +10,12 @@ import type {
 // ── 엑셀 스펙 최대 크기 ──────────────────────────────────────────────────────
 export const MAX_ROWS = 1_048_576;
 export const MAX_COLS = 16_384;
-export const DEFAULT_ROW_HEIGHT = 20;   // px
-export const DEFAULT_COL_WIDTH = 80;    // px
+export const DEFAULT_ROW_HEIGHT = 20; // px
+export const DEFAULT_COL_WIDTH = 80; // px
 
 // 행/열 비율에 맞게 조정된 SizeStore 청크 크기
-const ROW_CHUNK = 512;   // 1M 행 → 2048 청크
-const COL_CHUNK = 128;   // 16K 열 → 128 청크
+const ROW_CHUNK = 512; // 1M 행 → 2048 청크
+const COL_CHUNK = 128; // 16K 열 → 128 청크
 
 /**
  * 스프레드시트 캔버스의 가상 스크롤 뷰포트를 관리.
@@ -52,8 +52,8 @@ export class ViewportManager {
     private rafId: number | null = null;
     private dirty = false;
 
-    private hiddenRows = new Set<number>()
-    private readonly savedHeights = new Map<number, number>()
+    private hiddenRows = new Set<number>();
+    private readonly savedHeights = new Map<number, number>();
 
     private readonly listeners = new Set<ViewportListener>();
 
@@ -123,20 +123,23 @@ export class ViewportManager {
         // 이전 숨김 행 중 새 목록에 없는 것은 복원
         for (const row of this.hiddenRows) {
             if (!rows.has(row)) {
-                const saved = this.savedHeights.get(row) ?? DEFAULT_ROW_HEIGHT
-                this.rows.setSize(row, saved)
-                this.savedHeights.delete(row)
+                const saved = this.savedHeights.get(row) ?? DEFAULT_ROW_HEIGHT;
+                this.rows.setSize(row, saved);
+                this.savedHeights.delete(row);
             }
         }
         // 새로 숨길 행의 현재 높이를 저장하고 0으로 설정
         for (const row of rows) {
             if (!this.hiddenRows.has(row)) {
-                this.savedHeights.set(row, this.rows.getSize(row) || DEFAULT_ROW_HEIGHT)
-                this.rows.setSize(row, 0)
+                this.savedHeights.set(
+                    row,
+                    this.rows.getSize(row) || DEFAULT_ROW_HEIGHT,
+                );
+                this.rows.setSize(row, 0);
             }
         }
-        this.hiddenRows = new Set(rows)
-        this._schedule()
+        this.hiddenRows = new Set(rows);
+        this._schedule();
     }
 
     // ── 좌표 변환 ─────────────────────────────────────────────────────────────

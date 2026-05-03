@@ -73,7 +73,8 @@ export class SelectionManager {
     private formulaRefIndex = 0;
 
     private readonly selectionListeners = new Set<SelectionListener>();
-    private readonly formulaRefListeners = new Set<FormulaRefInsertedListener>();
+    private readonly formulaRefListeners =
+        new Set<FormulaRefInsertedListener>();
 
     constructor(sheetId: string) {
         this.sheetId = sheetId;
@@ -106,7 +107,8 @@ export class SelectionManager {
 
         // 수식 입력 중 Ctrl+클릭: 셀 참조 삽입 (드래그 시작 없음)
         if (this.isEditingFormula && modifiers.ctrl) {
-            const color = RANGE_COLORS[this.formulaRefIndex % RANGE_COLORS.length];
+            const color =
+                RANGE_COLORS[this.formulaRefIndex % RANGE_COLORS.length];
             this.formulaRefIndex++;
             const a = mkAddr(row, col, this.sheetId);
             this.selections = [...this.selections, { start: a, end: a, color }];
@@ -118,8 +120,7 @@ export class SelectionManager {
         if (modifiers.shift && this.activeCell !== null) {
             // Shift+클릭: activeCell(앵커)로부터 클릭 셀까지 마지막 범위 확장
             const ac = this.activeCell;
-            const lastColor =
-                this.selections.at(-1)?.color ?? RANGE_COLORS[0];
+            const lastColor = this.selections.at(-1)?.color ?? RANGE_COLORS[0];
             const extended: SelectionRange = {
                 start: mkAddr(ac.row, ac.col, this.sheetId),
                 end: mkAddr(row, col, this.sheetId),
@@ -133,7 +134,8 @@ export class SelectionManager {
             this.dragAnchor = { row: ac.row, col: ac.col };
         } else if (modifiers.ctrl) {
             // Ctrl+클릭: 새 범위 추가 (다른 색상)
-            const color = RANGE_COLORS[this.selections.length % RANGE_COLORS.length];
+            const color =
+                RANGE_COLORS[this.selections.length % RANGE_COLORS.length];
             const a = mkAddr(row, col, this.sheetId);
             this.selections = [...this.selections, { start: a, end: a, color }];
             this.activeCell = { row, col };
@@ -151,7 +153,11 @@ export class SelectionManager {
     }
 
     handleMouseMove(row: number, col: number): void {
-        if (!this.isDragging || !this.dragAnchor || this.selections.length === 0)
+        if (
+            !this.isDragging ||
+            !this.dragAnchor ||
+            this.selections.length === 0
+        )
             return;
 
         row = clampRow(row);

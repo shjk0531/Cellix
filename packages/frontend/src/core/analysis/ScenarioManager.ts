@@ -1,33 +1,33 @@
-import type { CellData } from '@cellix/shared'
+import type { CellData } from "@cellix/shared";
 
 export interface Scenario {
-    id: string
-    name: string
+    id: string;
+    name: string;
     changingCells: Array<{
-        row: number
-        col: number
-        sheetId: string
-        value: string | number | null
-    }>
-    comment?: string
+        row: number;
+        col: number;
+        sheetId: string;
+        value: string | number | null;
+    }>;
+    comment?: string;
 }
 
 export class ScenarioManager {
-    private readonly scenarios = new Map<string, Scenario[]>()
+    private readonly scenarios = new Map<string, Scenario[]>();
 
-    addScenario(sheetId: string, scenario: Omit<Scenario, 'id'>): string {
-        const id = crypto.randomUUID()
-        const list = this.scenarios.get(sheetId) ?? []
-        list.push({ ...scenario, id })
-        this.scenarios.set(sheetId, list)
-        return id
+    addScenario(sheetId: string, scenario: Omit<Scenario, "id">): string {
+        const id = crypto.randomUUID();
+        const list = this.scenarios.get(sheetId) ?? [];
+        list.push({ ...scenario, id });
+        this.scenarios.set(sheetId, list);
+        return id;
     }
 
     deleteScenario(sheetId: string, id: string): void {
-        const list = this.scenarios.get(sheetId)
-        if (!list) return
-        const next = list.filter(s => s.id !== id)
-        this.scenarios.set(sheetId, next)
+        const list = this.scenarios.get(sheetId);
+        if (!list) return;
+        const next = list.filter((s) => s.id !== id);
+        this.scenarios.set(sheetId, next);
     }
 
     showScenario(
@@ -35,17 +35,17 @@ export class ScenarioManager {
         id: string,
         setCell: (row: number, col: number, data: CellData) => void,
     ): void {
-        const list = this.scenarios.get(sheetId) ?? []
-        const scenario = list.find(s => s.id === id)
-        if (!scenario) return
+        const list = this.scenarios.get(sheetId) ?? [];
+        const scenario = list.find((s) => s.id === id);
+        if (!scenario) return;
 
         for (const cell of scenario.changingCells) {
-            setCell(cell.row, cell.col, { value: cell.value })
+            setCell(cell.row, cell.col, { value: cell.value });
         }
     }
 
     getScenariosForSheet(sheetId: string): Scenario[] {
-        return this.scenarios.get(sheetId) ?? []
+        return this.scenarios.get(sheetId) ?? [];
     }
 
     /**
@@ -57,75 +57,91 @@ export class ScenarioManager {
     generateSummary(
         sheetId: string,
         resultCells: Array<{ row: number; col: number }>,
-        setCell: (targetSheetId: string, row: number, col: number, data: CellData) => void,
+        setCell: (
+            targetSheetId: string,
+            row: number,
+            col: number,
+            data: CellData,
+        ) => void,
         summarySheetId: string,
         getCell: (row: number, col: number) => CellData | null,
     ): void {
-        const list = this.scenarios.get(sheetId) ?? []
-        if (list.length === 0) return
+        const list = this.scenarios.get(sheetId) ?? [];
+        if (list.length === 0) return;
 
-        let row = 0
+        let row = 0;
 
         // 헤더 행: 빈 셀 + 시나리오 이름들
-        setCell(summarySheetId, row, 0, { value: '변경 셀 / 시나리오' })
+        setCell(summarySheetId, row, 0, { value: "변경 셀 / 시나리오" });
         for (let i = 0; i < list.length; i++) {
-            setCell(summarySheetId, row, i + 1, { value: list[i].name })
+            setCell(summarySheetId, row, i + 1, { value: list[i].name });
         }
-        row++
+        row++;
 
         // 변경 셀 행들
-        const allChangingCells = new Map<string, { row: number; col: number }>()
+        const allChangingCells = new Map<
+            string,
+            { row: number; col: number }
+        >();
         for (const scenario of list) {
             for (const cell of scenario.changingCells) {
-                const key = `${cell.row}:${cell.col}`
+                const key = `${cell.row}:${cell.col}`;
                 if (!allChangingCells.has(key)) {
-                    allChangingCells.set(key, { row: cell.row, col: cell.col })
+                    allChangingCells.set(key, { row: cell.row, col: cell.col });
                 }
             }
         }
 
         for (const [, cell] of allChangingCells) {
-            const colLetter = _colToLetter(cell.col)
-            setCell(summarySheetId, row, 0, { value: `${colLetter}${cell.row + 1}` })
+            const colLetter = _colToLetter(cell.col);
+            setCell(summarySheetId, row, 0, {
+                value: `${colLetter}${cell.row + 1}`,
+            });
 
             for (let i = 0; i < list.length; i++) {
                 const found = list[i].changingCells.find(
-                    c => c.row === cell.row && c.col === cell.col,
-                )
-                setCell(summarySheetId, row, i + 1, { value: found?.value ?? null })
+                    (c) => c.row === cell.row && c.col === cell.col,
+                );
+                setCell(summarySheetId, row, i + 1, {
+                    value: found?.value ?? null,
+                });
             }
-            row++
+            row++;
         }
 
         // 구분선
-        row++
+        row++;
 
         // 결과 셀 행들 (현재 시트의 현재 값)
-        setCell(summarySheetId, row, 0, { value: '결과 셀' })
-        row++
+        setCell(summarySheetId, row, 0, { value: "결과 셀" });
+        row++;
 
         for (const rc of resultCells) {
-            const colLetter = _colToLetter(rc.col)
-            setCell(summarySheetId, row, 0, { value: `${colLetter}${rc.row + 1}` })
+            const colLetter = _colToLetter(rc.col);
+            setCell(summarySheetId, row, 0, {
+                value: `${colLetter}${rc.row + 1}`,
+            });
 
-            const currentVal = getCell(rc.row, rc.col)
+            const currentVal = getCell(rc.row, rc.col);
             for (let i = 0; i < list.length; i++) {
-                setCell(summarySheetId, row, i + 1, { value: currentVal?.value ?? null })
+                setCell(summarySheetId, row, i + 1, {
+                    value: currentVal?.value ?? null,
+                });
             }
-            row++
+            row++;
         }
     }
 }
 
 function _colToLetter(col: number): string {
-    let result = ''
-    let n = col + 1
+    let result = "";
+    let n = col + 1;
     while (n > 0) {
-        const r = (n - 1) % 26
-        result = String.fromCharCode(65 + r) + result
-        n = Math.floor((n - 1) / 26)
+        const r = (n - 1) % 26;
+        result = String.fromCharCode(65 + r) + result;
+        n = Math.floor((n - 1) / 26);
     }
-    return result
+    return result;
 }
 
-export const scenarioManager = new ScenarioManager()
+export const scenarioManager = new ScenarioManager();

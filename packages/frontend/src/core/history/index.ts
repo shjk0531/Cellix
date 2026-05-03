@@ -1,5 +1,5 @@
-export { HistoryManager } from './HistoryManager'
-export { ClipboardManager } from './ClipboardManager'
+export { HistoryManager } from "./HistoryManager";
+export { ClipboardManager } from "./ClipboardManager";
 export type {
     Command,
     HistoryState,
@@ -11,4 +11,4 @@ export type {
     PasteSpecialState,
     CutSourceListener,
     PasteSpecialListener,
-} from './types'
+} from "./types";

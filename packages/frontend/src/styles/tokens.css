@@ -1,0 +1,303 @@
+/* ==========================================================================
+   Cellix Design Tokens
+   Usage: `var(--color-primary)`, `var(--space-4)`, `var(--font-size-sm)`
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Primitive palette  (raw values — use semantic tokens in components)
+   -------------------------------------------------------------------------- */
+:root {
+    /* Blue */
+    --palette-blue-50: #e8f0fe;
+    --palette-blue-100: #c4d3fc;
+    --palette-blue-200: #a8c7fa;
+    --palette-blue-500: #1a73e8;
+    --palette-blue-600: #1558b0;
+    --palette-blue-700: #0d47a1;
+
+    /* Green */
+    --palette-green-50: #e6f4ea;
+    --palette-green-500: #0f9d58;
+    --palette-green-600: #1e8e3e;
+
+    /* Yellow */
+    --palette-yellow-50: #fef9e7;
+    --palette-yellow-400: #f4b400;
+
+    /* Red */
+    --palette-red-50: #fce8e6;
+    --palette-red-400: #ea4335;
+    --palette-red-500: #db4437;
+    --palette-red-600: #c5221f;
+
+    /* Neutral */
+    --palette-neutral-0: #ffffff;
+    --palette-neutral-50: #f8f9fa;
+    --palette-neutral-100: #f1f3f4;
+    --palette-neutral-150: #e8eaed;
+    --palette-neutral-200: #dadce0;
+    --palette-neutral-300: #d0d7de;
+    --palette-neutral-400: #9aa0a6;
+    --palette-neutral-500: #6b7280;
+    --palette-neutral-600: #5f6368;
+    --palette-neutral-700: #3c4043;
+    --palette-neutral-800: #202124;
+    --palette-neutral-900: #1f2329;
+    --palette-neutral-1000: #000000;
+}
+
+/* ==========================================================================
+   Semantic tokens — Light theme (default)
+   ========================================================================== */
+:root,
+[data-theme="light"] {
+    /* --- Surface (backgrounds) --- */
+    --color-bg-page: var(--palette-neutral-50);
+    --color-bg-base: var(--palette-neutral-0);
+    --color-bg-elevated: var(--palette-neutral-0);
+    --color-bg-sunken: var(--palette-neutral-100);
+    --color-bg-hover: var(--palette-neutral-150);
+    --color-bg-selected: var(--palette-blue-50);
+    --color-bg-overlay: rgba(0, 0, 0, 0.4);
+
+    /* --- Text --- */
+    --color-text-primary: var(--palette-neutral-900);
+    --color-text-secondary: var(--palette-neutral-600);
+    --color-text-tertiary: var(--palette-neutral-400);
+    --color-text-disabled: var(--palette-neutral-300);
+    --color-text-inverse: var(--palette-neutral-0);
+    --color-text-link: var(--palette-blue-500);
+    --color-text-on-accent: var(--palette-neutral-0);
+
+    /* --- Border --- */
+    --color-border-default: var(--palette-neutral-200);
+    --color-border-subtle: var(--palette-neutral-150);
+    --color-border-strong: var(--palette-neutral-400);
+    --color-border-focus: var(--palette-blue-500);
+    --color-border-error: var(--palette-red-500);
+
+    /* --- Accent (primary action) --- */
+    --color-accent: var(--palette-blue-500);
+    --color-accent-hover: var(--palette-blue-600);
+    --color-accent-active: var(--palette-blue-700);
+    --color-accent-subtle: var(--palette-blue-50);
+    --color-accent-disabled: var(--palette-blue-200);
+
+    /* --- Status --- */
+    --color-success: var(--palette-green-500);
+    --color-success-hover: var(--palette-green-600);
+    --color-success-subtle: var(--palette-green-50);
+    --color-success-text: var(--palette-green-600);
+
+    --color-warning: var(--palette-yellow-400);
+    --color-warning-subtle: var(--palette-yellow-50);
+    --color-warning-text: #b8860b;
+
+    --color-error: var(--palette-red-500);
+    --color-error-hover: var(--palette-red-600);
+    --color-error-subtle: var(--palette-red-50);
+    --color-error-text: var(--palette-red-600);
+
+    /* --- Grid / Canvas --- */
+    --color-grid-line: var(--palette-neutral-200);
+    --color-grid-header-bg: var(--palette-neutral-100);
+    --color-grid-header-text: var(--palette-neutral-600);
+    --color-grid-cell-bg: var(--palette-neutral-0);
+    --color-grid-cell-text: var(--palette-neutral-900);
+
+    /* --- Shadow (elevation) --- */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12);
+    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.15);
+    --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.18);
+    --shadow-xl: 0 8px 32px rgba(0, 0, 0, 0.2);
+
+    /* --- Formula reference selection colors --- */
+    --color-ref-1: #4b87ff;
+    --color-ref-2: #00cc66;
+    --color-ref-3: #ff8c00;
+    --color-ref-4: #9b59b6;
+    --color-ref-5: #e74c3c;
+}
+
+/* ==========================================================================
+   Semantic tokens — Dark theme
+   ========================================================================== */
+[data-theme="dark"] {
+    /* --- Surface --- */
+    --color-bg-page: #111318;
+    --color-bg-base: #1c1f26;
+    --color-bg-elevated: #24282f;
+    --color-bg-sunken: #14171d;
+    --color-bg-hover: #2c3038;
+    --color-bg-selected: #1e3a5f;
+    --color-bg-overlay: rgba(0, 0, 0, 0.6);
+
+    /* --- Text --- */
+    --color-text-primary: #e3e5e8;
+    --color-text-secondary: #9aa0a6;
+    --color-text-tertiary: #5f6368;
+    --color-text-disabled: #3c4043;
+    --color-text-inverse: #1f2329;
+    --color-text-link: #8ab4f8;
+    --color-text-on-accent: #ffffff;
+
+    /* --- Border --- */
+    --color-border-default: #3c4043;
+    --color-border-subtle: #2c3038;
+    --color-border-strong: #5f6368;
+    --color-border-focus: #8ab4f8;
+    --color-border-error: #f28b82;
+
+    /* --- Accent --- */
+    --color-accent: #8ab4f8;
+    --color-accent-hover: #aecbfa;
+    --color-accent-active: #c4d3fc;
+    --color-accent-subtle: #1e3a5f;
+    --color-accent-disabled: #2a4a72;
+
+    /* --- Status --- */
+    --color-success: #81c995;
+    --color-success-hover: #a8d5b5;
+    --color-success-subtle: #1b3a28;
+    --color-success-text: #81c995;
+
+    --color-warning: #fdd663;
+    --color-warning-subtle: #3d2f00;
+    --color-warning-text: #fdd663;
+
+    --color-error: #f28b82;
+    --color-error-hover: #f6aea9;
+    --color-error-subtle: #4a1e1e;
+    --color-error-text: #f28b82;
+
+    /* --- Grid / Canvas --- */
+    --color-grid-line: #3c4043;
+    --color-grid-header-bg: #24282f;
+    --color-grid-header-text: #9aa0a6;
+    --color-grid-cell-bg: #1c1f26;
+    --color-grid-cell-text: #e3e5e8;
+
+    /* --- Shadow --- */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.48);
+    --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.56);
+    --shadow-xl: 0 8px 32px rgba(0, 0, 0, 0.64);
+
+    /* --- Formula reference colors — same hue, slightly lighter --- */
+    --color-ref-1: #6ea3ff;
+    --color-ref-2: #33db80;
+    --color-ref-3: #ffaa33;
+    --color-ref-4: #b07fd1;
+    --color-ref-5: #f07069;
+}
+
+/* ==========================================================================
+   Typography tokens
+   ========================================================================== */
+:root {
+    /* Font families */
+    --font-family-sans:
+        "Google Sans", "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI",
+        Arial, sans-serif;
+    --font-family-mono:
+        "Roboto Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo,
+        monospace;
+
+    /* Font sizes — px values matching existing usage */
+    --font-size-2xs: 9px;
+    --font-size-xs: 11px;
+    --font-size-sm: 12px;
+    --font-size-md: 13px; /* default cell / UI text */
+    --font-size-base: 14px;
+    --font-size-lg: 16px;
+    --font-size-xl: 18px;
+    --font-size-2xl: 22px;
+    --font-size-3xl: 28px;
+    --font-size-4xl: 36px;
+    --font-size-5xl: 48px;
+
+    /* Line heights */
+    --line-height-tight: 1.2;
+    --line-height-snug: 1.4;
+    --line-height-normal: 1.5;
+    --line-height-relaxed: 1.7;
+
+    /* Font weights */
+    --font-weight-regular: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+
+    /* Letter spacing */
+    --letter-spacing-tight: -0.01em;
+    --letter-spacing-normal: 0em;
+    --letter-spacing-wide: 0.02em;
+    --letter-spacing-wider: 0.05em;
+}
+
+/* ==========================================================================
+   Spacing tokens  (4px base grid)
+   ========================================================================== */
+:root {
+    --space-px: 1px;
+    --space-0: 0px;
+    --space-0-5: 2px;
+    --space-1: 4px;
+    --space-1-5: 6px;
+    --space-2: 8px;
+    --space-2-5: 10px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-7: 28px;
+    --space-8: 32px;
+    --space-10: 40px;
+    --space-12: 48px;
+    --space-16: 64px;
+}
+
+/* ==========================================================================
+   Border radius tokens
+   ========================================================================== */
+:root {
+    --radius-none: 0px;
+    --radius-sm: 3px; /* inputs, chips */
+    --radius-md: 4px; /* dialogs, cards */
+    --radius-lg: 6px; /* larger dialogs */
+    --radius-xl: 8px; /* buttons, modals */
+    --radius-2xl: 12px; /* profile cards */
+    --radius-3xl: 16px; /* result modal */
+    --radius-full: 9999px;
+}
+
+/* ==========================================================================
+   Motion tokens
+   ========================================================================== */
+:root {
+    --duration-instant: 0ms;
+    --duration-fast: 100ms;
+    --duration-normal: 200ms;
+    --duration-slow: 300ms;
+    --duration-slower: 400ms;
+
+    --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-in: cubic-bezier(0.4, 0, 1, 1);
+    --ease-out: cubic-bezier(0, 0, 0.2, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ==========================================================================
+   Z-index scale
+   ========================================================================== */
+:root {
+    --z-below: -1;
+    --z-base: 0;
+    --z-raised: 10;
+    --z-dropdown: 100;
+    --z-sticky: 200;
+    --z-overlay: 300;
+    --z-modal: 400;
+    --z-toast: 500;
+    --z-tooltip: 600;
+}

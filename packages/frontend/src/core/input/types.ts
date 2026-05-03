@@ -1,17 +1,17 @@
-export type EditMode = 'none' | 'edit' | 'formula'
+export type EditMode = "none" | "edit" | "formula";
 
 export interface EditState {
-    mode: EditMode
-    row: number
-    col: number
-    value: string
+    mode: EditMode;
+    row: number;
+    col: number;
+    value: string;
 }
 
 export interface FillRange {
-    direction: 'up' | 'down' | 'left' | 'right'
-    endRow: number
-    endCol: number
+    direction: "up" | "down" | "left" | "right";
+    endRow: number;
+    endCol: number;
 }
 
-export type EditListener = (state: EditState) => void
-export type FillListener = (range: FillRange) => void
+export type EditListener = (state: EditState) => void;
+export type FillListener = (range: FillRange) => void;

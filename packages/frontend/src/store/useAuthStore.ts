@@ -1,20 +1,20 @@
-import { create } from 'zustand'
-import { apiClient } from '../api/client'
+import { create } from "zustand";
+import { apiClient } from "../api/client";
 
 interface User {
-    id: string
-    email: string
-    name: string
-    role: string
+    id: string;
+    email: string;
+    name: string;
+    role: string;
 }
 
 interface AuthState {
-    user: User | null
-    isLoading: boolean
-    login: (email: string, password: string) => Promise<void>
-    register: (email: string, password: string, name: string) => Promise<void>
-    logout: () => Promise<void>
-    checkAuth: () => Promise<void>
+    user: User | null;
+    isLoading: boolean;
+    login: (email: string, password: string) => Promise<void>;
+    register: (email: string, password: string, name: string) => Promise<void>;
+    logout: () => Promise<void>;
+    checkAuth: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()((set) => ({
@@ -23,43 +23,44 @@ export const useAuthStore = create<AuthState>()((set) => ({
 
     login: async (email, password) => {
         const data = await apiClient.post<{ accessToken: string; user: User }>(
-            '/api/auth/login',
+            "/api/auth/login",
             { email, password },
-        )
-        apiClient.setToken(data.accessToken)
-        set({ user: data.user })
+        );
+        apiClient.setToken(data.accessToken);
+        set({ user: data.user });
     },
 
     register: async (email, password, name) => {
         const data = await apiClient.post<{ accessToken: string; user: User }>(
-            '/api/auth/register',
+            "/api/auth/register",
             { email, password, name },
-        )
-        apiClient.setToken(data.accessToken)
-        set({ user: data.user })
+        );
+        apiClient.setToken(data.accessToken);
+        set({ user: data.user });
     },
 
     logout: async () => {
         try {
-            await apiClient.post('/api/auth/logout')
+            await apiClient.post("/api/auth/logout");
         } catch {
             // ignore
         }
-        apiClient.setToken(null)
-        set({ user: null })
+        apiClient.setToken(null);
+        set({ user: null });
     },
 
     checkAuth: async () => {
-        set({ isLoading: true })
+        set({ isLoading: true });
         try {
-            const data = await apiClient.post<{ accessToken: string; user: User }>(
-                '/api/auth/refresh',
-            )
-            apiClient.setToken(data.accessToken)
-            set({ user: data.user, isLoading: false })
+            const data = await apiClient.post<{
+                accessToken: string;
+                user: User;
+            }>("/api/auth/refresh");
+            apiClient.setToken(data.accessToken);
+            set({ user: data.user, isLoading: false });
         } catch {
-            apiClient.setToken(null)
-            set({ user: null, isLoading: false })
+            apiClient.setToken(null);
+            set({ user: null, isLoading: false });
         }
     },
-}))
+}));

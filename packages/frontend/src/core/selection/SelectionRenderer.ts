@@ -124,7 +124,8 @@ export class SelectionRenderer {
         const w = this.vp.getColWidth(col);
         const h = this.vp.getRowHeight(row);
 
-        if (x + w <= 0 || y + h <= 0 || x >= viewWidth || y >= viewHeight) return;
+        if (x + w <= 0 || y + h <= 0 || x >= viewWidth || y >= viewHeight)
+            return;
 
         // 활성 셀 커서: 안쪽 2px 굵은 파란 테두리
         ctx.strokeStyle = RANGE_COLORS[0];

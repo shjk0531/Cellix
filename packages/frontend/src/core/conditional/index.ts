@@ -1,5 +1,8 @@
-export { conditionalFormatManager, ConditionalFormatManager } from './ConditionalFormatManager'
-export type { CondFmtCellResult } from './ConditionalFormatManager'
+export {
+    conditionalFormatManager,
+    ConditionalFormatManager,
+} from "./ConditionalFormatManager";
+export type { CondFmtCellResult } from "./ConditionalFormatManager";
 export type {
     CondFmtEntry,
     CondFmtRule,
@@ -10,4 +13,4 @@ export type {
     CondFmtColorScaleRule,
     CondFmtDataBarRule,
     CondFmtTopBottomRule,
-} from './types'
+} from "./types";

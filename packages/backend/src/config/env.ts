@@ -8,19 +8,13 @@ const envSchema = z.object({
     PORT: z.coerce.number().int().min(1).max(65535).default(3001),
     HOST: z.string().default("0.0.0.0"),
 
-    DATABASE_URL: z
-        .string()
-        .url()
-        .startsWith("postgresql://", {
-            message: "DATABASE_URL must be a postgresql:// URI",
-        }),
+    DATABASE_URL: z.string().url().startsWith("postgresql://", {
+        message: "DATABASE_URL must be a postgresql:// URI",
+    }),
 
-    REDIS_URL: z
-        .string()
-        .url()
-        .startsWith("redis://", {
-            message: "REDIS_URL must be a redis:// URI",
-        }),
+    REDIS_URL: z.string().url().startsWith("redis://", {
+        message: "REDIS_URL must be a redis:// URI",
+    }),
 
     CORS_ORIGIN: z.string().url().default("http://localhost:5173"),
 

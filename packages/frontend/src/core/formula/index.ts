@@ -1,1 +1,1 @@
-export { DirtyCellTracker, dirtyCellTracker } from './DirtyCellTracker'
+export { DirtyCellTracker, dirtyCellTracker } from "./DirtyCellTracker";

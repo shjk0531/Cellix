@@ -1,1 +1,8 @@
 @import "tailwindcss";
+@import "./styles/tokens.css";
+
+@keyframes cellix-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
