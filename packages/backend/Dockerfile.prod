@@ -1,0 +1,64 @@
+# ── Stage 0: Rust + WASM 빌드 (pkg-node only) ────────────────────────────────
+FROM rust:1.95-slim AS wasm-builder
+
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+RUN curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+WORKDIR /workspace
+COPY packages/formula-engine/Cargo.toml ./packages/formula-engine/
+COPY packages/formula-engine/Cargo.lock ./packages/formula-engine/
+COPY packages/formula-engine/src/ ./packages/formula-engine/src/
+
+RUN cd packages/formula-engine && \
+    wasm-pack build --target nodejs --out-dir pkg-node --release
+
+# ── Stage 1: 빌드 ────────────────────────────────────────────────────────────
+FROM node:24-alpine AS builder
+
+RUN npm install -g pnpm
+
+WORKDIR /workspace
+
+# 의존성 캐시 레이어
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.base.json ./
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/backend/package.json ./packages/backend/
+# pnpm workspace 등록에 필요한 package.json — wasm-builder에서 가져옴
+COPY --from=wasm-builder /workspace/packages/formula-engine/pkg-node/package.json ./packages/formula-engine/pkg-node/
+
+RUN pnpm install --frozen-lockfile
+
+# 소스 복사
+COPY packages/shared/ ./packages/shared/
+COPY packages/backend/ ./packages/backend/
+
+# wasm-builder에서 빌드된 pkg-node 복사 (전체 — package.json + .wasm)
+COPY --from=wasm-builder /workspace/packages/formula-engine/pkg-node/ ./packages/formula-engine/pkg-node/
+
+RUN pnpm --filter @cellix/shared build && \
+    pnpm --filter @cellix/backend build
+
+# ── Stage 2: 실행 ────────────────────────────────────────────────────────────
+FROM node:24-alpine AS runtime
+
+RUN apk upgrade --no-cache && npm install -g pnpm
+
+WORKDIR /workspace
+
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/backend/package.json ./packages/backend/
+# pnpm workspace 등록에 필요한 package.json — wasm-builder에서 가져옴
+COPY --from=wasm-builder /workspace/packages/formula-engine/pkg-node/package.json ./packages/formula-engine/pkg-node/
+
+RUN pnpm install --frozen-lockfile --prod
+
+COPY --from=builder /workspace/packages/shared/dist ./packages/shared/dist
+COPY --from=builder /workspace/packages/backend/dist ./packages/backend/dist
+
+# WASM 바이너리 복사 — 런타임에 필요
+COPY --from=wasm-builder /workspace/packages/formula-engine/pkg-node/ ./packages/formula-engine/pkg-node/
+
+EXPOSE 3001
+
+CMD ["node", "--enable-source-maps", "packages/backend/dist/server.js"]

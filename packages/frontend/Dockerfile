@@ -11,7 +11,7 @@ RUN cd packages/formula-engine && \
     wasm-pack build --target web --out-dir pkg --dev
 
 # ── Stage 2: Node 개발 서버 ────────────────────────────────────────────────
-FROM node:22-alpine AS dev
+FROM node:24-alpine AS dev
 
 RUN apk upgrade --no-cache && npm install -g pnpm
 

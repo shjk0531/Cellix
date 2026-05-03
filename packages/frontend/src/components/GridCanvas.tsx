@@ -5,7 +5,8 @@ import { SelectionManager, SelectionRenderer } from '../core/selection'
 import type { SelectionRange, SelectionState } from '../core/selection'
 import { InputManager } from '../core/input'
 import { HistoryManager, ClipboardManager } from '../core/history'
-import { GridRenderer } from '../core/renderer'
+import { GridRenderer, OffscreenLayer } from '../core/renderer'
+import { dirtyCellTracker } from '../core/formula'
 import { filterManager } from '../core/data'
 import type { FilterCriteria } from '../core/data'
 import { tableManager } from '../core/table'
@@ -120,6 +121,7 @@ export function GridCanvas() {
 
             // ── 엔진 인스턴스 생성 ──────────────────────────────────────────────
             const viewport = new ViewportManager(initW, initH)
+            const offscreenLayer = new OffscreenLayer(initW, initH)
             const selection = new SelectionManager(useWorkbookStore.getState().activeSheetId)
             const input = new InputManager(canvas, container, viewport, selection, onCommit)
             input.setCreateTableCallback(() => {
@@ -173,7 +175,10 @@ export function GridCanvas() {
                     next[key] = c.value.t === 'nil' ? null : (c.value.v ?? null)
                 }
                 useWorkbookStore.getState().setCalculatedValues(next)
-                // 차트 데이터 자동 갱신
+                dirtyCellTracker.markDirtyBatch(
+                    changed.map(c => ({ sheetId: c.sheet_id, row: c.row, col: c.col })),
+                )
+                offscreenLayer.invalidate()
                 setChartDataVersion(v => v + 1)
             })
 
@@ -222,6 +227,9 @@ export function GridCanvas() {
                 if (state.activeSheetId !== prev.activeSheetId) {
                     selection.setSheetId(state.activeSheetId)
                     viewport.setHiddenRows(filterManager.hiddenRows.get(state.activeSheetId) ?? new Set())
+                }
+                if (state.cells !== prev.cells || state.calculatedValues !== prev.calculatedValues) {
+                    offscreenLayer.invalidate()
                 }
             })
 
@@ -285,6 +293,7 @@ export function GridCanvas() {
                 canvas.width = w
                 canvas.height = h
                 viewport.resize(w, h)
+                offscreenLayer.resize(w, h)
             })
             observer.observe(container)
 
@@ -293,7 +302,9 @@ export function GridCanvas() {
             const renderLoop = () => {
                 ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-                gridRenderer.draw(ctx)
+                offscreenLayer.drawBackground(ctx, viewport, (bgCtx) => {
+                    gridRenderer.draw(bgCtx as unknown as CanvasRenderingContext2D)
+                })
 
                 selectionRenderer.markDirty()
                 selectionRenderer.drawSelections(ctx, curSelections, curActiveCell)

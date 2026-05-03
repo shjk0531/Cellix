@@ -24,8 +24,11 @@ function toCellAddress(row: number, col: number): string {
  *
  * 수식 입력줄에서 직접 편집하는 기능은 TODO — 현재는 표시 전용.
  */
-export function FormulaBar() {
-    const { activeCell, editMode, editValue, activeCellData } = useUIStore()
+export const FormulaBar = React.memo(function FormulaBar() {
+    const activeCell = useUIStore(state => state.activeCell)
+    const editMode = useUIStore(state => state.editMode)
+    const editValue = useUIStore(state => state.editValue)
+    const activeCellData = useUIStore(state => state.activeCellData)
 
     const address = activeCell ? toCellAddress(activeCell.row, activeCell.col) : ''
 
@@ -102,4 +105,4 @@ export function FormulaBar() {
             </div>
         </div>
     )
-}
+})

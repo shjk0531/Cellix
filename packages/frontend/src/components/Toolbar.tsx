@@ -95,7 +95,7 @@ function Btn({ label, title, style, active, disabled, onClick }: BtnProps) {
  * 상단 리본 툴바.
  * styleManager와 연동하여 셀 스타일(굵게/기울임/정렬/색상/숫자 포맷 등)을 적용합니다.
  */
-export function Toolbar() {
+export const Toolbar = React.memo(function Toolbar() {
     const { canUndo, canRedo, activeCell, selections } = useUIStore()
     const activeSheetId = useWorkbookStore((s) => s.activeSheetId)
     const [showChartInsert, setShowChartInsert] = React.useState(false)
@@ -385,4 +385,4 @@ export function Toolbar() {
             )}
         </div>
     )
-}
+})

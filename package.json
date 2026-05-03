@@ -5,8 +5,8 @@
     "scripts": {
         "build:wasm": "cd packages/formula-engine && wasm-pack build --target web --out-dir pkg --release && wasm-pack build --target nodejs --out-dir pkg-node --release",
         "build:wasm:dev": "cd packages/formula-engine && wasm-pack build --target web --out-dir pkg --dev && wasm-pack build --target nodejs --out-dir pkg-node --dev",
-        "dev": "pnpm build:wasm:dev && pnpm --parallel -r dev",
-        "build": "pnpm -r build",
+        "dev": "pnpm --parallel -r dev",
+        "build": "pnpm build:wasm && pnpm -r build",
         "typecheck": "pnpm -r typecheck",
         "lint": "pnpm -r lint",
         "clean": "pnpm -r clean && rm -rf node_modules"
@@ -15,7 +15,7 @@
         "typescript": "^5.4.5"
     },
     "engines": {
-        "node": ">=20.0.0",
+        "node": ">=24.0.0",
         "pnpm": ">=9.0.0"
     }
 }
