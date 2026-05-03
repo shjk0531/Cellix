@@ -1,0 +1,163 @@
+/* ============================================================
+   GlobalLayout — CSS Grid: sidebar + header + main
+   ============================================================ */
+
+/* ── Shell ──────────────────────────────────────────────── */
+.gl {
+    display: grid;
+    grid-template-areas:
+        "sidebar header"
+        "sidebar main";
+    grid-template-columns: 240px 1fr;
+    grid-template-rows: 56px 1fr;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.gl[data-collapsed="true"] {
+    grid-template-columns: 64px 1fr;
+}
+
+/* ── Regions ────────────────────────────────────────────── */
+.gl-sidebar { grid-area: sidebar; }
+.gl-header  { grid-area: header; }
+.gl-main    { grid-area: main; overflow-y: auto; }
+
+/* ── Sidebar internals ──────────────────────────────────── */
+.gl-sidebar {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: width var(--duration-normal, 200ms) var(--ease-out, ease);
+}
+
+/* Hide text labels when collapsed */
+.gl[data-collapsed="true"] .gl-nav-label,
+.gl[data-collapsed="true"] .gl-logo-text,
+.gl[data-collapsed="true"] .gl-user-meta,
+.gl[data-collapsed="true"] .gl-theme-label {
+    display: none;
+}
+
+/* Nav items — active / hover */
+.gl-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: var(--radius-xl, 8px);
+    cursor: pointer;
+    text-decoration: none;
+    transition: background var(--duration-fast, 100ms);
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.gl-nav-item:hover {
+    background: var(--color-bg-hover);
+}
+
+.gl-nav-item.active {
+    background: var(--color-accent-subtle);
+    color: var(--color-accent);
+}
+
+.gl-nav-item.active .gl-nav-icon {
+    color: var(--color-accent);
+}
+
+/* Icon — centered when collapsed */
+.gl[data-collapsed="true"] .gl-nav-item {
+    justify-content: center;
+    padding: 10px;
+}
+
+/* ── Responsive ─────────────────────────────────────────── */
+
+/* Tablet (768 – 1023 px): auto-collapse sidebar */
+@media (max-width: 1023px) {
+    .gl {
+        grid-template-columns: 64px 1fr;
+    }
+
+    .gl .gl-nav-label,
+    .gl .gl-logo-text,
+    .gl .gl-user-meta,
+    .gl .gl-theme-label {
+        display: none;
+    }
+
+    .gl .gl-nav-item {
+        justify-content: center;
+        padding: 10px;
+    }
+
+    /* Override data-collapsed since it's forced */
+    .gl[data-collapsed="true"] {
+        grid-template-columns: 64px 1fr;
+    }
+}
+
+/* Mobile (< 768 px): sidebar becomes an overlay */
+@media (max-width: 767px) {
+    .gl {
+        grid-template-areas:
+            "header header"
+            "main   main";
+        grid-template-columns: 1fr;
+        grid-template-rows: 56px 1fr;
+    }
+
+    .gl-sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: 240px;
+        transform: translateX(-100%);
+        transition: transform var(--duration-normal, 200ms) var(--ease-out, ease);
+        z-index: var(--z-overlay, 300);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .gl[data-mobile-open="true"] .gl-sidebar {
+        transform: translateX(0);
+    }
+
+    /* All labels visible in mobile overlay */
+    .gl-sidebar .gl-nav-label,
+    .gl-sidebar .gl-logo-text,
+    .gl-sidebar .gl-user-meta,
+    .gl-sidebar .gl-theme-label {
+        display: block !important;
+    }
+
+    .gl-sidebar .gl-nav-item {
+        justify-content: flex-start !important;
+        padding: 10px 12px !important;
+    }
+
+    .gl-mobile-backdrop {
+        display: block;
+    }
+}
+
+/* Mobile backdrop (hidden by default) */
+.gl-mobile-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: var(--color-bg-overlay, rgba(0, 0, 0, 0.4));
+    z-index: calc(var(--z-overlay, 300) - 1);
+}
+
+/* Hamburger — hidden on desktop, visible on mobile */
+.gl-hamburger {
+    display: none !important;
+}
+
+@media (max-width: 767px) {
+    .gl-hamburger {
+        display: flex !important;
+    }
+}
