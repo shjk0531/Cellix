@@ -1,6 +1,6 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
-import { env } from "./config/env.js";
+import { env } from "./global/config/env.js";
 import type { ApiResponse } from "@cellix/shared";
 
 const app = Fastify({

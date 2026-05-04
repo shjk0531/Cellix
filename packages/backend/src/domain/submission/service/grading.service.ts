@@ -2,76 +2,18 @@ import { createRequire } from "node:module";
 import type { FormulaEngine as IFormulaEngine } from "formula-engine-node";
 import type { WorkbookData, CellValue } from "@cellix/shared";
 import { deserializeWorkbook } from "@cellix/shared";
+import type {
+    GradingConfig,
+    CellGradingRule,
+    TableGradingRule,
+    CellRuleResult,
+    GradingResult,
+} from "../entity/submission.entity.js";
 
 const _require = createRequire(import.meta.url);
 const { FormulaEngine } = _require("formula-engine-node") as {
     FormulaEngine: new () => IFormulaEngine;
 };
-
-// ── 채점 설정 타입 ─────────────────────────────────────────────────────────
-
-export interface CellGradingRule {
-    sheetId: string;
-    address: string;
-    expectedValue?: CellValue;
-    tolerance?: number;
-    checkFormula?: boolean;
-    formulaPattern?: string;
-    scoreWeight: number;
-    hint?: string;
-}
-
-export interface TableGradingRule {
-    name: string;
-    checkColumns?: boolean;
-    expectedColumns?: string[];
-    scoreWeight: number;
-    hint?: string;
-}
-
-export interface ChartGradingRule {
-    expectedType?: string;
-    scoreWeight: number;
-    hint?: string;
-}
-
-export interface GradingConfig {
-    cells?: CellGradingRule[];
-    tables?: TableGradingRule[];
-    charts?: ChartGradingRule[];
-    totalScore: number;
-}
-
-export interface CellRuleResult {
-    address: string;
-    sheetId: string;
-    passed: boolean;
-    earnedScore: number;
-    maxScore: number;
-    actualValue?: CellValue;
-    expectedValue?: CellValue;
-    formulaUsed?: string;
-    formulaMatched?: boolean;
-    hint?: string;
-}
-
-export interface GradingResult {
-    totalScore: number;
-    maxScore: number;
-    percentage: number;
-    status: "pass" | "partial" | "fail";
-    cellResults: CellRuleResult[];
-    tableResults: {
-        name: string;
-        passed: boolean;
-        earnedScore: number;
-        maxScore: number;
-        hint?: string;
-    }[];
-    feedback: string;
-}
-
-// ── 채점 서비스 ────────────────────────────────────────────────────────────
 
 export class GradingService {
     async grade(
@@ -80,7 +22,6 @@ export class GradingService {
     ): Promise<GradingResult> {
         const workbook = deserializeWorkbook(submittedRaw);
 
-        // 요청마다 새 인스턴스 (상태 격리)
         const engine = new FormulaEngine();
         this._loadWorkbookIntoEngine(engine, workbook);
 
@@ -124,8 +65,6 @@ export class GradingService {
         };
     }
 
-    // ── 워크북 → WASM 엔진 로드 ─────────────────────────────────────────────
-
     private _loadWorkbookIntoEngine(
         engine: IFormulaEngine,
         workbook: WorkbookData,
@@ -166,8 +105,6 @@ export class GradingService {
         }
     }
 
-    // ── 셀 채점 ──────────────────────────────────────────────────────────────
-
     private _gradeCellRule(
         engine: IFormulaEngine,
         rule: CellGradingRule,
@@ -196,7 +133,6 @@ export class GradingService {
             }
         }
 
-        // 에러 셀 자동 실패
         if (parsed?.t === "e") {
             return {
                 address: rule.address,
@@ -256,8 +192,6 @@ export class GradingService {
         };
     }
 
-    // ── 표 채점 ──────────────────────────────────────────────────────────────
-
     private _gradeTableRule(
         workbook: WorkbookData,
         rule: TableGradingRule,
@@ -311,9 +245,6 @@ export class GradingService {
         };
     }
 
-    // ── 유틸 ─────────────────────────────────────────────────────────────────
-
-    /** "A1" | "$B$2" → { row: 0, col: 0 } (0-based) */
     private _parseAddress(addr: string): { row: number; col: number } {
         const clean = addr.replace(/\$/g, "");
         const match = clean.match(/^([A-Za-z]{1,3})(\d+)$/);

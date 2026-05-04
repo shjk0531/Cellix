@@ -3,14 +3,12 @@ import cors from "@fastify/cors";
 import jwt from "@fastify/jwt";
 import cookie from "@fastify/cookie";
 import { ZodError } from "zod";
-import { env } from "./config/index.js";
-import { dbPlugin, redisPlugin, authPlugin } from "./plugins/index.js";
-import {
-    authRoutes,
-    problemRoutes,
-    submissionRoutes,
-    userRoutes,
-} from "./routes/index.js";
+import { env } from "./global/config/index.js";
+import { dbPlugin, redisPlugin, authPlugin } from "./global/plugins/index.js";
+import { authController } from "./domain/auth/index.js";
+import { userController } from "./domain/user/index.js";
+import { problemController } from "./domain/problem/index.js";
+import { submissionController } from "./domain/submission/index.js";
 import type { ApiResponse } from "@cellix/shared";
 
 export async function buildApp() {
@@ -30,10 +28,10 @@ export async function buildApp() {
     await app.register(redisPlugin);
     await app.register(authPlugin);
 
-    await app.register(authRoutes, { prefix: "/api/auth" });
-    await app.register(problemRoutes, { prefix: "/api/problems" });
-    await app.register(submissionRoutes, { prefix: "/api/submissions" });
-    await app.register(userRoutes, { prefix: "/api/users" });
+    await app.register(authController, { prefix: "/api/auth" });
+    await app.register(problemController, { prefix: "/api/problems" });
+    await app.register(submissionController, { prefix: "/api/submissions" });
+    await app.register(userController, { prefix: "/api/users" });
 
     app.get(
         "/api/health",
@@ -51,12 +49,19 @@ export async function buildApp() {
             });
         }
         app.log.error(error);
-        const httpError = error as { statusCode?: number; message: string };
-        if (typeof httpError.statusCode === "number" && httpError.statusCode < 500) {
+        const httpError = error as {
+            statusCode?: number;
+            message: string;
+            code?: string;
+        };
+        if (
+            typeof httpError.statusCode === "number" &&
+            httpError.statusCode < 500
+        ) {
             return reply.status(httpError.statusCode).send({
                 success: false,
                 error: httpError.message,
-                code: "VALIDATION_ERROR",
+                code: httpError.code ?? "VALIDATION_ERROR",
             });
         }
         return reply.status(500).send({
