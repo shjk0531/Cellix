@@ -29,7 +29,8 @@ export function ProfilePage() {
         s === 'graded' ? '채점 완료' : s === 'error' ? '오류' : s
 
     return (
-        <div style={{ maxWidth: 720, margin: '0 auto', padding: '32px 24px' }}>
+        <div className="grid-container" style={{ paddingTop: 32, paddingBottom: 40 }}>
+
             {/* 프로필 카드 */}
             <div style={{
                 background: 'var(--color-bg-base)',
@@ -108,7 +109,7 @@ export function ProfilePage() {
                         alignItems: 'center',
                         gap: 12,
                     }}>
-                        <div style={{ flex: 1 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 'var(--font-size-md)', color: 'var(--color-text-secondary)' }}>
                                 {new Date(sub.submittedAt).toLocaleString('ko-KR')}
                             </div>
@@ -116,7 +117,7 @@ export function ProfilePage() {
                                 {statusLabel(sub.status)}
                             </div>
                         </div>
-                        <div style={{ textAlign: 'right' }}>
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
                             <div style={{
                                 fontSize: 'var(--font-size-lg)',
                                 fontWeight: 'var(--font-weight-bold)',

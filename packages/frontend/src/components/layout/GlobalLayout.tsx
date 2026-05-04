@@ -1,19 +1,14 @@
 import React, { useState } from 'react'
-import { NavLink, Outlet, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, Navigate, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../store'
 import { useThemeStore } from '../../store'
 import './GlobalLayout.css'
 
-// ── Route → title mapping ─────────────────────────────────────────────────────
-
-const ROUTE_TITLES: Record<string, string> = {
-    '/': '문제 목록',
-    '/profile': '내 정보',
-}
+// ── Navigation items ──────────────────────────────────────────────────────────
 
 const NAV_ITEMS = [
-    { to: '/', label: '문제 목록', icon: '☰', exact: true },
-    { to: '/profile', label: '내 정보', icon: '◎', exact: false },
+    { to: '/', label: '문제 목록', exact: true },
+    { to: '/profile', label: '내 정보', exact: false },
 ] as const
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -31,322 +26,175 @@ function LoadingScreen() {
     )
 }
 
-function ThemeToggleButton({ collapsed }: { collapsed: boolean }) {
-    const { mode, setMode } = useThemeStore()
-    const isDark = mode === 'dark'
-
-    const toggle = () => setMode(isDark ? 'light' : mode === 'light' ? 'system' : 'dark')
-
-    const modeIcon = mode === 'dark' ? '🌙' : mode === 'light' ? '☀️' : '⚙️'
-    const modeLabel = mode === 'dark' ? '다크' : mode === 'light' ? '라이트' : '시스템'
-
-    return (
-        <button
-            title={`테마: ${modeLabel}`}
-            onClick={toggle}
-            style={{
-                display: 'flex', alignItems: 'center',
-                gap: collapsed ? 0 : 10,
-                width: '100%',
-                padding: collapsed ? '10px' : '10px 12px',
-                justifyContent: collapsed ? 'center' : 'flex-start',
-                border: 'none',
-                borderRadius: 'var(--radius-xl)',
-                background: 'transparent',
-                cursor: 'pointer',
-                color: 'var(--color-text-secondary)',
-                fontSize: 'var(--font-size-md)',
-                transition: 'background var(--duration-fast)',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-bg-hover)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-        >
-            <span style={{ fontSize: 16, flexShrink: 0 }}>{modeIcon}</span>
-            <span className="gl-theme-label" style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                {modeLabel} 모드
-            </span>
-        </button>
-    )
-}
-
 // ── GlobalLayout ──────────────────────────────────────────────────────────────
 
 export function GlobalLayout() {
     const { user, isLoading, logout } = useAuthStore()
-    const location = useLocation()
     const navigate = useNavigate()
-    const [collapsed, setCollapsed] = useState(false)
     const [mobileOpen, setMobileOpen] = useState(false)
+    const { mode, setMode } = useThemeStore()
 
     if (isLoading) return <LoadingScreen />
     if (!user) return <Navigate to="/login" replace />
 
-    const pageTitle = ROUTE_TITLES[location.pathname] ?? 'Cellix'
+    const modeIcon = mode === 'dark' ? '🌙' : mode === 'light' ? '☀️' : '⚙️'
+    const modeLabel = mode === 'dark' ? '다크' : mode === 'light' ? '라이트' : '시스템'
+    const nextMode = mode === 'dark' ? 'light' : mode === 'light' ? 'system' : 'dark'
 
     const handleLogout = () => {
         logout().then(() => navigate('/login'))
+        setMobileOpen(false)
     }
 
-    const sidebarBg: React.CSSProperties = {
-        background: 'var(--color-bg-base)',
-        borderRight: '1px solid var(--color-border-default)',
-        height: '100%',
-    }
+    const closeMobile = () => setMobileOpen(false)
 
     return (
-        <div
-            className="gl"
-            data-collapsed={collapsed}
-            data-mobile-open={mobileOpen}
-            style={{ background: 'var(--color-bg-page)' }}
-        >
-            {/* ── Mobile backdrop ───────────────────────────────────────── */}
-            {mobileOpen && (
-                <div
-                    className="gl-mobile-backdrop"
-                    onClick={() => setMobileOpen(false)}
-                />
-            )}
+        <div className="gl" style={{ background: 'var(--color-bg-page)' }}>
 
-            {/* ══ Sidebar ══════════════════════════════════════════════ */}
-            <aside className="gl-sidebar" style={sidebarBg}>
+            {/* ══ Navbar ═══════════════════════════════════════════════ */}
+            <header className="gl-navbar">
+                <div className="grid-container">
+                    <div className="gl-nav-inner">
 
-                {/* Logo + toggle */}
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    padding: collapsed ? '16px 10px' : '16px 16px',
-                    justifyContent: collapsed ? 'center' : 'space-between',
-                    borderBottom: '1px solid var(--color-border-subtle)',
-                    flexShrink: 0,
-                }}>
-                    <div style={{
-                        display: 'flex', alignItems: 'center', gap: 8,
-                        overflow: 'hidden',
-                    }}>
-                        <span style={{
-                            fontSize: 20, flexShrink: 0,
-                            color: 'var(--color-accent)',
-                        }}>⬡</span>
-                        <span
-                            className="gl-logo-text"
-                            style={{
-                                fontSize: 'var(--font-size-lg)',
-                                fontWeight: 'var(--font-weight-bold)',
-                                color: 'var(--color-text-primary)',
-                                whiteSpace: 'nowrap',
-                            }}
-                        >
-                            Cellix
-                        </span>
-                    </div>
-                    <button
-                        title={collapsed ? '사이드바 펼치기' : '사이드바 접기'}
-                        onClick={() => setCollapsed(c => !c)}
-                        style={{
-                            flexShrink: 0,
-                            width: 28, height: 28,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            border: 'none',
-                            borderRadius: 'var(--radius-md)',
-                            background: 'transparent',
-                            cursor: 'pointer',
-                            color: 'var(--color-text-secondary)',
-                            fontSize: 14,
-                            transition: 'background var(--duration-fast)',
-                        }}
-                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-bg-hover)')}
-                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                    >
-                        {collapsed ? '▶' : '◀'}
-                    </button>
-                </div>
+                        {/* Left: Logo + nav links */}
+                        <div className="gl-nav-left">
+                            <div className="gl-logo">
+                                <span style={{ fontSize: 20, color: 'var(--color-accent)', lineHeight: 1 }}>⬡</span>
+                                <span style={{
+                                    fontSize: 'var(--font-size-lg)',
+                                    fontWeight: 'var(--font-weight-bold)',
+                                    color: 'var(--color-text-primary)',
+                                }}>
+                                    Cellix
+                                </span>
+                            </div>
 
-                {/* Navigation */}
-                <nav style={{ flex: 1, padding: '12px 8px', overflowY: 'auto' }}>
-                    {NAV_ITEMS.map(item => (
-                        <NavLink
-                            key={item.to}
-                            to={item.to}
-                            end={item.exact}
-                            className={({ isActive }) => `gl-nav-item${isActive ? ' active' : ''}`}
-                            title={item.label}
-                            onClick={() => setMobileOpen(false)}
-                            style={({ isActive }) => ({
-                                color: isActive
-                                    ? 'var(--color-accent)'
-                                    : 'var(--color-text-secondary)',
-                                fontWeight: isActive ? 'var(--font-weight-semibold)' : 'var(--font-weight-regular)',
-                                fontSize: 'var(--font-size-base)',
-                            })}
-                        >
-                            <span
-                                className="gl-nav-icon"
-                                style={{ fontSize: 18, flexShrink: 0, lineHeight: 1 }}
+                            <nav className="gl-nav-links">
+                                {NAV_ITEMS.map(item => (
+                                    <NavLink
+                                        key={item.to}
+                                        to={item.to}
+                                        end={item.exact}
+                                        className={({ isActive }) =>
+                                            `gl-nav-link${isActive ? ' active' : ''}`
+                                        }
+                                    >
+                                        {item.label}
+                                    </NavLink>
+                                ))}
+                            </nav>
+                        </div>
+
+                        {/* Right: theme toggle, user info, logout */}
+                        <div className="gl-nav-right">
+                            <button
+                                className="gl-icon-btn"
+                                title={`테마: ${modeLabel}`}
+                                onClick={() => setMode(nextMode)}
                             >
-                                {item.icon}
-                            </span>
-                            <span className="gl-nav-label">{item.label}</span>
-                        </NavLink>
-                    ))}
-                </nav>
+                                <span style={{ fontSize: 15 }}>{modeIcon}</span>
+                            </button>
 
-                {/* Sidebar footer */}
-                <div style={{
-                    borderTop: '1px solid var(--color-border-subtle)',
-                    padding: '8px 8px 12px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 2,
-                }}>
-                    <ThemeToggleButton collapsed={collapsed} />
+                            {user.role === 'admin' && (
+                                <span className="gl-admin-badge">관리자</span>
+                            )}
 
-                    {/* User info */}
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 10,
-                        padding: collapsed ? '10px' : '10px 12px',
-                        justifyContent: collapsed ? 'center' : 'flex-start',
-                        borderRadius: 'var(--radius-xl)',
-                        overflow: 'hidden',
-                    }}>
-                        <div style={{
-                            width: 28, height: 28, flexShrink: 0,
-                            borderRadius: 'var(--radius-full)',
-                            background: 'var(--color-accent-subtle)',
-                            color: 'var(--color-accent)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: 12, fontWeight: 'var(--font-weight-bold)',
-                        }}>
-                            {user.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="gl-user-meta" style={{ overflow: 'hidden', flex: 1 }}>
-                            <div style={{
-                                fontSize: 'var(--font-size-md)',
-                                fontWeight: 'var(--font-weight-semibold)',
-                                color: 'var(--color-text-primary)',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                            }}>
-                                {user.name}
+                            <div className="gl-user-chip">
+                                <div className="gl-avatar">
+                                    {user.name.charAt(0).toUpperCase()}
+                                </div>
+                                <span className="gl-user-name">
+                                    {user.name}
+                                </span>
                             </div>
-                            <div style={{
-                                fontSize: 'var(--font-size-xs)',
-                                color: 'var(--color-text-tertiary)',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                            }}>
-                                {user.email}
-                            </div>
+
+                            <button
+                                className="gl-logout-btn"
+                                onClick={handleLogout}
+                                title="로그아웃"
+                            >
+                                <span style={{ fontSize: 14, lineHeight: 1 }}>→</span>
+                                <span className="gl-logout-label">로그아웃</span>
+                            </button>
                         </div>
+
+                        {/* Hamburger — mobile only */}
+                        <button
+                            className="gl-hamburger"
+                            onClick={() => setMobileOpen(o => !o)}
+                            title="메뉴"
+                            aria-expanded={mobileOpen}
+                        >
+                            {mobileOpen ? '✕' : '☰'}
+                        </button>
                     </div>
-
-                    {/* Logout */}
-                    <button
-                        title="로그아웃"
-                        onClick={handleLogout}
-                        style={{
-                            display: 'flex', alignItems: 'center',
-                            gap: collapsed ? 0 : 10,
-                            width: '100%',
-                            padding: collapsed ? '10px' : '10px 12px',
-                            justifyContent: collapsed ? 'center' : 'flex-start',
-                            border: 'none',
-                            borderRadius: 'var(--radius-xl)',
-                            background: 'transparent',
-                            cursor: 'pointer',
-                            color: 'var(--color-error)',
-                            fontSize: 'var(--font-size-md)',
-                            transition: 'background var(--duration-fast)',
-                        }}
-                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-error-subtle)')}
-                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                    >
-                        <span style={{ fontSize: 16, flexShrink: 0 }}>→</span>
-                        <span className="gl-nav-label">로그아웃</span>
-                    </button>
                 </div>
-            </aside>
 
-            {/* ══ Header ═══════════════════════════════════════════════ */}
-            <header className="gl-header" style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: '0 24px',
-                background: 'var(--color-bg-base)',
-                borderBottom: '1px solid var(--color-border-default)',
-                boxShadow: 'var(--shadow-sm)',
-            }}>
-                {/* Mobile hamburger */}
-                <button
-                    onClick={() => setMobileOpen(o => !o)}
-                    style={{
-                        display: 'none',
-                        width: 32, height: 32,
-                        border: 'none',
-                        borderRadius: 'var(--radius-md)',
-                        background: 'transparent',
-                        cursor: 'pointer',
-                        color: 'var(--color-text-secondary)',
-                        fontSize: 18,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                    }}
-                    className="gl-hamburger"
-                    title="메뉴"
-                >
-                    ☰
-                </button>
+                {/* Mobile dropdown menu */}
+                {mobileOpen && (
+                    <div className="gl-mobile-menu">
+                        <div className="grid-container">
+                            <nav className="gl-mobile-nav">
+                                {NAV_ITEMS.map(item => (
+                                    <NavLink
+                                        key={item.to}
+                                        to={item.to}
+                                        end={item.exact}
+                                        className={({ isActive }) =>
+                                            `gl-mobile-nav-link${isActive ? ' active' : ''}`
+                                        }
+                                        onClick={closeMobile}
+                                    >
+                                        {item.label}
+                                    </NavLink>
+                                ))}
+                            </nav>
 
-                {/* Page title */}
-                <h1 style={{
-                    margin: 0,
-                    fontSize: 'var(--font-size-lg)',
-                    fontWeight: 'var(--font-weight-semibold)',
-                    color: 'var(--color-text-primary)',
-                    flex: 1,
-                }}>
-                    {pageTitle}
-                </h1>
-
-                {/* User badge */}
-                {user.role === 'admin' && (
-                    <span style={{
-                        padding: '2px 10px',
-                        borderRadius: 'var(--radius-full)',
-                        fontSize: 'var(--font-size-xs)',
-                        fontWeight: 'var(--font-weight-semibold)',
-                        background: 'var(--color-accent-subtle)',
-                        color: 'var(--color-accent)',
-                    }}>
-                        관리자
-                    </span>
-                )}
-                <span style={{
-                    fontSize: 'var(--font-size-sm)',
-                    color: 'var(--color-text-secondary)',
-                    display: 'flex', alignItems: 'center', gap: 6,
-                }}>
-                    <div style={{
-                        width: 24, height: 24,
-                        borderRadius: 'var(--radius-full)',
-                        background: 'var(--color-accent-subtle)',
-                        color: 'var(--color-accent)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 11, fontWeight: 'var(--font-weight-bold)',
-                        flexShrink: 0,
-                    }}>
-                        {user.name.charAt(0).toUpperCase()}
+                            <div className="gl-mobile-footer">
+                                <div className="gl-mobile-user">
+                                    <div className="gl-avatar">
+                                        {user.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <div style={{
+                                            fontSize: 'var(--font-size-md)',
+                                            fontWeight: 'var(--font-weight-semibold)',
+                                            color: 'var(--color-text-primary)',
+                                        }}>
+                                            {user.name}
+                                        </div>
+                                        <div style={{
+                                            fontSize: 'var(--font-size-xs)',
+                                            color: 'var(--color-text-tertiary)',
+                                        }}>
+                                            {user.email}
+                                        </div>
+                                    </div>
+                                </div>
+                                <button
+                                    className="gl-mobile-action-btn"
+                                    onClick={() => { setMode(nextMode); closeMobile() }}
+                                >
+                                    <span>{modeIcon}</span>
+                                    {modeLabel} 모드
+                                </button>
+                                <button
+                                    className="gl-mobile-action-btn danger"
+                                    onClick={handleLogout}
+                                >
+                                    <span>→</span>
+                                    로그아웃
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    {user.name}
-                </span>
+                )}
             </header>
+
+            {/* Backdrop for mobile menu */}
+            {mobileOpen && (
+                <div className="gl-mobile-backdrop" onClick={closeMobile} />
+            )}
 
             {/* ══ Main ═════════════════════════════════════════════════ */}
             <main className="gl-main">

@@ -38,9 +38,16 @@ export function ProblemListPage() {
     })
 
     return (
-        <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px' }}>
+        <div className="grid-container" style={{ paddingTop: 32, paddingBottom: 40 }}>
+
             {/* 필터 + 검색 */}
-            <div style={{ display: 'flex', gap: 8, marginBottom: 20, alignItems: 'center' }}>
+            <div style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 8,
+                marginBottom: 20,
+                alignItems: 'center',
+            }}>
                 {(['all', 'easy', 'medium', 'hard'] as const).map(d => (
                     <button
                         key={d}
@@ -70,6 +77,7 @@ export function ProblemListPage() {
                         fontSize: 'var(--font-size-md)',
                         outline: 'none',
                         width: 200,
+                        maxWidth: '100%',
                         background: 'var(--color-bg-base)',
                         color: 'var(--color-text-primary)',
                     }}
@@ -108,8 +116,8 @@ export function ProblemListPage() {
                         onMouseEnter={e => (e.currentTarget.style.boxShadow = 'var(--shadow-md)')}
                         onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
                     >
-                        <div style={{ flex: 1 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
                                 <span style={{
                                     fontSize: 'var(--font-size-base)',
                                     fontWeight: 'var(--font-weight-semibold)',
@@ -124,6 +132,7 @@ export function ProblemListPage() {
                                     fontWeight: 'var(--font-weight-semibold)',
                                     color: DIFFICULTY_COLOR[p.difficulty],
                                     background: `${DIFFICULTY_COLOR[p.difficulty]}18`,
+                                    flexShrink: 0,
                                 }}>
                                     {DIFFICULTY_LABEL[p.difficulty]}
                                 </span>
@@ -151,7 +160,7 @@ export function ProblemListPage() {
                                 </div>
                             )}
                         </div>
-                        <div style={{ textAlign: 'right', minWidth: 80 }}>
+                        <div style={{ textAlign: 'right', minWidth: 72, flexShrink: 0 }}>
                             <div style={{
                                 fontSize: 'var(--font-size-lg)',
                                 fontWeight: 'var(--font-weight-bold)',

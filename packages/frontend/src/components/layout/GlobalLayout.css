@@ -1,163 +1,300 @@
 /* ============================================================
-   GlobalLayout — CSS Grid: sidebar + header + main
+   GlobalLayout — Top navbar + main content area
+   Uses the Cellix grid system (.grid-container) for alignment
    ============================================================ */
 
 /* ── Shell ──────────────────────────────────────────────── */
 .gl {
-    display: grid;
-    grid-template-areas:
-        "sidebar header"
-        "sidebar main";
-    grid-template-columns: 240px 1fr;
-    grid-template-rows: 56px 1fr;
+    display: flex;
+    flex-direction: column;
     height: 100vh;
     overflow: hidden;
 }
 
-.gl[data-collapsed="true"] {
-    grid-template-columns: 64px 1fr;
+/* ── Navbar ─────────────────────────────────────────────── */
+.gl-navbar {
+    flex-shrink: 0;
+    background: var(--color-bg-base);
+    border-bottom: 1px solid var(--color-border-default);
+    box-shadow: var(--shadow-sm);
+    position: sticky;
+    top: 0;
+    z-index: var(--z-sticky);
 }
 
-/* ── Regions ────────────────────────────────────────────── */
-.gl-sidebar { grid-area: sidebar; }
-.gl-header  { grid-area: header; }
-.gl-main    { grid-area: main; overflow-y: auto; }
-
-/* ── Sidebar internals ──────────────────────────────────── */
-.gl-sidebar {
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    transition: width var(--duration-normal, 200ms) var(--ease-out, ease);
-}
-
-/* Hide text labels when collapsed */
-.gl[data-collapsed="true"] .gl-nav-label,
-.gl[data-collapsed="true"] .gl-logo-text,
-.gl[data-collapsed="true"] .gl-user-meta,
-.gl[data-collapsed="true"] .gl-theme-label {
-    display: none;
-}
-
-/* Nav items — active / hover */
-.gl-nav-item {
+/* Inner flex row — height fixed at 56px */
+.gl-nav-inner {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    border-radius: var(--radius-xl, 8px);
-    cursor: pointer;
-    text-decoration: none;
-    transition: background var(--duration-fast, 100ms);
-    white-space: nowrap;
-    overflow: hidden;
+    height: 56px;
+    gap: 8px;
 }
 
-.gl-nav-item:hover {
+/* ── Left section: Logo + links ──────────────────────────── */
+.gl-nav-left {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex: 1;
+    min-width: 0;
+}
+
+.gl-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    text-decoration: none;
+    user-select: none;
+}
+
+.gl-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.gl-nav-link {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: var(--radius-lg);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-regular);
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background var(--duration-fast), color var(--duration-fast);
+}
+
+.gl-nav-link:hover {
+    background: var(--color-bg-hover);
+    color: var(--color-text-primary);
+}
+
+.gl-nav-link.active {
+    background: var(--color-accent-subtle);
+    color: var(--color-accent);
+    font-weight: var(--font-weight-semibold);
+}
+
+/* ── Right section: actions ──────────────────────────────── */
+.gl-nav-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+/* Icon-only button (theme toggle) */
+.gl-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: var(--radius-md);
+    background: transparent;
+    cursor: pointer;
+    color: var(--color-text-secondary);
+    transition: background var(--duration-fast);
+}
+
+.gl-icon-btn:hover {
     background: var(--color-bg-hover);
 }
 
-.gl-nav-item.active {
+/* Admin role badge */
+.gl-admin-badge {
+    padding: 2px 10px;
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
     background: var(--color-accent-subtle);
     color: var(--color-accent);
+    flex-shrink: 0;
 }
 
-.gl-nav-item.active .gl-nav-icon {
+/* Avatar + name */
+.gl-user-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.gl-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-full);
+    background: var(--color-accent-subtle);
     color: var(--color-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: var(--font-weight-bold);
+    flex-shrink: 0;
 }
 
-/* Icon — centered when collapsed */
-.gl[data-collapsed="true"] .gl-nav-item {
+.gl-user-name {
+    font-size: var(--font-size-md);
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+}
+
+/* Logout button */
+.gl-logout-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: none;
+    border-radius: var(--radius-lg);
+    background: transparent;
+    cursor: pointer;
+    color: var(--color-error);
+    font-size: var(--font-size-md);
+    white-space: nowrap;
+    transition: background var(--duration-fast);
+}
+
+.gl-logout-btn:hover {
+    background: var(--color-error-subtle);
+}
+
+/* Hamburger — hidden on desktop/tablet */
+.gl-hamburger {
+    display: none;
+    align-items: center;
     justify-content: center;
-    padding: 10px;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: var(--radius-md);
+    background: transparent;
+    cursor: pointer;
+    color: var(--color-text-secondary);
+    font-size: 18px;
+    flex-shrink: 0;
+    transition: background var(--duration-fast);
+}
+
+.gl-hamburger:hover {
+    background: var(--color-bg-hover);
+}
+
+/* ── Mobile dropdown menu ───────────────────────────────── */
+.gl-mobile-menu {
+    border-top: 1px solid var(--color-border-subtle);
+    background: var(--color-bg-base);
+    padding-block: 8px 16px;
+}
+
+.gl-mobile-nav {
+    display: flex;
+    flex-direction: column;
+}
+
+.gl-mobile-nav-link {
+    display: flex;
+    align-items: center;
+    padding: 12px 0;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-regular);
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    border-bottom: 1px solid var(--color-border-subtle);
+    transition: color var(--duration-fast);
+}
+
+.gl-mobile-nav-link:last-child {
+    border-bottom: none;
+}
+
+.gl-mobile-nav-link.active {
+    color: var(--color-accent);
+    font-weight: var(--font-weight-semibold);
+}
+
+/* Footer with user info + actions */
+.gl-mobile-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 8px;
+    padding-top: 12px;
+    border-top: 1px solid var(--color-border-subtle);
+}
+
+.gl-mobile-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0 12px;
+}
+
+.gl-mobile-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 10px 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: var(--font-size-base);
+    color: var(--color-text-secondary);
+    text-align: left;
+    border-radius: var(--radius-md);
+    transition: background var(--duration-fast), color var(--duration-fast);
+}
+
+.gl-mobile-action-btn:hover {
+    background: var(--color-bg-hover);
+}
+
+.gl-mobile-action-btn.danger {
+    color: var(--color-error);
+}
+
+.gl-mobile-action-btn.danger:hover {
+    background: var(--color-error-subtle);
+}
+
+/* Backdrop */
+.gl-mobile-backdrop {
+    position: fixed;
+    inset: 0;
+    background: var(--color-bg-overlay, rgba(0, 0, 0, 0.4));
+    z-index: calc(var(--z-sticky) - 1);
+}
+
+/* ── Main content area ──────────────────────────────────── */
+.gl-main {
+    flex: 1;
+    overflow-y: auto;
+    background: var(--color-bg-page);
 }
 
 /* ── Responsive ─────────────────────────────────────────── */
 
-/* Tablet (768 – 1023 px): auto-collapse sidebar */
+/* Tablet (768–1023px): hide user name and logout text label */
 @media (max-width: 1023px) {
-    .gl {
-        grid-template-columns: 64px 1fr;
-    }
-
-    .gl .gl-nav-label,
-    .gl .gl-logo-text,
-    .gl .gl-user-meta,
-    .gl .gl-theme-label {
+    .gl-user-name,
+    .gl-logout-label {
         display: none;
     }
-
-    .gl .gl-nav-item {
-        justify-content: center;
-        padding: 10px;
-    }
-
-    /* Override data-collapsed since it's forced */
-    .gl[data-collapsed="true"] {
-        grid-template-columns: 64px 1fr;
-    }
 }
 
-/* Mobile (< 768 px): sidebar becomes an overlay */
-@media (max-width: 767px) {
-    .gl {
-        grid-template-areas:
-            "header header"
-            "main   main";
-        grid-template-columns: 1fr;
-        grid-template-rows: 56px 1fr;
-    }
-
-    .gl-sidebar {
-        position: fixed;
-        top: 0;
-        left: 0;
-        height: 100vh;
-        width: 240px;
-        transform: translateX(-100%);
-        transition: transform var(--duration-normal, 200ms) var(--ease-out, ease);
-        z-index: var(--z-overlay, 300);
-        box-shadow: var(--shadow-lg);
-    }
-
-    .gl[data-mobile-open="true"] .gl-sidebar {
-        transform: translateX(0);
-    }
-
-    /* All labels visible in mobile overlay */
-    .gl-sidebar .gl-nav-label,
-    .gl-sidebar .gl-logo-text,
-    .gl-sidebar .gl-user-meta,
-    .gl-sidebar .gl-theme-label {
-        display: block !important;
-    }
-
-    .gl-sidebar .gl-nav-item {
-        justify-content: flex-start !important;
-        padding: 10px 12px !important;
-    }
-
-    .gl-mobile-backdrop {
-        display: block;
-    }
-}
-
-/* Mobile backdrop (hidden by default) */
-.gl-mobile-backdrop {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: var(--color-bg-overlay, rgba(0, 0, 0, 0.4));
-    z-index: calc(var(--z-overlay, 300) - 1);
-}
-
-/* Hamburger — hidden on desktop, visible on mobile */
-.gl-hamburger {
-    display: none !important;
-}
-
+/* Mobile (< 768px): hamburger + dropdown, hide desktop nav */
 @media (max-width: 767px) {
     .gl-hamburger {
-        display: flex !important;
+        display: flex;
+    }
+
+    .gl-nav-links,
+    .gl-nav-right {
+        display: none;
     }
 }

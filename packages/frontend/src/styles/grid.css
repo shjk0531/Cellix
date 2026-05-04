@@ -1,0 +1,91 @@
+/* ============================================================
+   Cellix Grid System
+   Desktop  (≥ 1024px): max-width 1200px, 12 cols, 24px gutter, 40px margin
+   Tablet   (768–1023px): 100%, 6 cols, 24px gutter, 24px margin
+   Mobile   (≤ 767px):   100%, 4 cols, 16px gutter, 16px margin
+   ============================================================ */
+
+:root {
+    --grid-columns:   12;
+    --grid-gutter:    24px;
+    --grid-margin:    40px;
+    --grid-max-width: 1200px;
+}
+
+@media (max-width: 1023px) {
+    :root {
+        --grid-columns: 6;
+        --grid-gutter:  24px;
+        --grid-margin:  24px;
+    }
+}
+
+@media (max-width: 767px) {
+    :root {
+        --grid-columns: 4;
+        --grid-gutter:  16px;
+        --grid-margin:  16px;
+    }
+}
+
+/* ── Container ──────────────────────────────────────────────
+   Centers content and applies responsive horizontal margins.
+   On desktop: max-width 1200px with 40px side margins.
+   On tablet/mobile: full width with 24px / 16px margins.
+   ─────────────────────────────────────────────────────────── */
+.grid-container {
+    width: 100%;
+    max-width: calc(var(--grid-max-width) + var(--grid-margin) * 2);
+    margin-inline: auto;
+    padding-inline: var(--grid-margin);
+    box-sizing: border-box;
+}
+
+/* ── Row ────────────────────────────────────────────────────
+   Use inside .grid-container for multi-column layouts.
+   ─────────────────────────────────────────────────────────── */
+.grid-row {
+    display: grid;
+    grid-template-columns: repeat(var(--grid-columns), 1fr);
+    gap: var(--grid-gutter);
+}
+
+/* ── Column spans — Desktop (12 cols) ───────────────────────
+   Usage: <div class="col-6"> spans 6 of 12 columns
+   ─────────────────────────────────────────────────────────── */
+.col-1  { grid-column: span 1; }
+.col-2  { grid-column: span 2; }
+.col-3  { grid-column: span 3; }
+.col-4  { grid-column: span 4; }
+.col-5  { grid-column: span 5; }
+.col-6  { grid-column: span 6; }
+.col-7  { grid-column: span 7; }
+.col-8  { grid-column: span 8; }
+.col-9  { grid-column: span 9; }
+.col-10 { grid-column: span 10; }
+.col-11 { grid-column: span 11; }
+.col-12 { grid-column: span 12; }
+
+/* ── Tablet overrides (768–1023px, 6 cols) ──────────────────
+   Usage: <div class="col-4 col-md-3"> 4 cols desktop, 3 cols tablet
+   ─────────────────────────────────────────────────────────── */
+@media (max-width: 1023px) {
+    .col-md-1 { grid-column: span 1; }
+    .col-md-2 { grid-column: span 2; }
+    .col-md-3 { grid-column: span 3; }
+    .col-md-4 { grid-column: span 4; }
+    .col-md-5 { grid-column: span 5; }
+    .col-md-6 { grid-column: span 6; }
+    .col-md-full { grid-column: 1 / -1; }
+}
+
+/* ── Mobile overrides (≤ 767px, 4 cols) ────────────────────
+   Usage: <div class="col-6 col-sm-4"> 6 cols desktop, full on mobile
+   ─────────────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+    .col-sm-1 { grid-column: span 1; }
+    .col-sm-2 { grid-column: span 2; }
+    .col-sm-3 { grid-column: span 3; }
+    .col-sm-4 { grid-column: span 4; }
+    .col-sm-full { grid-column: 1 / -1; }
+}
