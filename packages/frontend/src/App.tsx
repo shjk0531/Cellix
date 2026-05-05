@@ -1,6 +1,13 @@
 import React, { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { AuthPage, ProblemListPage, ProblemPage, ProfilePage } from './pages'
+import {
+    AuthPage,
+    ProblemListPage,
+    ProblemPage,
+    ProfilePage,
+    ProblemCreatePage,
+    MyProblemsPage,
+} from './pages'
 import { useAuthStore } from './store'
 import { ThemeProvider } from './components/providers'
 import { GlobalLayout } from './components/layout'
@@ -35,7 +42,7 @@ export default function App() {
                     {/* 인증 불필요 */}
                     <Route path="/login" element={<AuthPage />} />
 
-                    {/* GlobalLayout (sidebar + header) 적용 라우트 */}
+                    {/* GlobalLayout (navbar) 적용 라우트 */}
                     <Route
                         path="/"
                         element={
@@ -46,6 +53,7 @@ export default function App() {
                     >
                         <Route index element={<ProblemListPage />} />
                         <Route path="profile" element={<ProfilePage />} />
+                        <Route path="my-problems" element={<MyProblemsPage />} />
                     </Route>
 
                     {/* 전체화면 스프레드시트 — 자체 레이아웃 */}
@@ -54,6 +62,16 @@ export default function App() {
                         element={
                             <PrivateRoute>
                                 <ProblemPage />
+                            </PrivateRoute>
+                        }
+                    />
+
+                    {/* 문제 만들기 — 자체 레이아웃 (스프레드시트 embed) */}
+                    <Route
+                        path="/problems/create"
+                        element={
+                            <PrivateRoute>
+                                <ProblemCreatePage />
                             </PrivateRoute>
                         }
                     />

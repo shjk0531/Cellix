@@ -16,7 +16,6 @@
     },
     "dependencies": {
         "@cellix/shared": "workspace:*",
-        "formula-engine-node": "workspace:*",
         "@fastify/cookie": "^11.0.2",
         "@fastify/cors": "^11.2.0",
         "@fastify/jwt": "^10.0.0",
@@ -34,6 +33,7 @@
     "devDependencies": {
         "@types/bcrypt": "^6.0.0",
         "@types/node": "^20.14.9",
+        "dotenv": "^17.4.2",
         "drizzle-kit": "^0.31.10",
         "tsx": "^4.16.2",
         "typescript": "^5.4.5"

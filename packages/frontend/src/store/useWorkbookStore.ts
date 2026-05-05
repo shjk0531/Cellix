@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { CellData } from "@cellix/shared";
+import type { SerializedWorkbookData } from "@cellix/shared";
 import { formulaEngine } from "../workers";
 
 export interface SheetInfo {
@@ -32,6 +33,10 @@ interface WorkbookState {
         values: Record<string, string | number | boolean | null>,
     ) => void;
     setEngineReady: (ready: boolean) => void;
+    // 워크북 상태 초기화 (문제 만들기 페이지 진입 시 사용)
+    reset: () => void;
+    // 현재 워크북 상태를 SerializedWorkbookData 스냅샷으로 캡처
+    snapshot: () => SerializedWorkbookData;
 }
 
 let _counter = 1;
@@ -111,5 +116,58 @@ export const useWorkbookStore = create<WorkbookState>()((set, get) => {
 
         setCalculatedValues: (values) => set({ calculatedValues: values }),
         setEngineReady: (ready) => set({ engineReady: ready }),
+
+        reset: () => {
+            const id = mkId();
+            formulaEngine.initialize().catch(console.error);
+            set({
+                sheets: [{ id, name: "Sheet1" }],
+                activeSheetId: id,
+                cells: {},
+                calculatedValues: {},
+                engineReady: false,
+            });
+        },
+
+        snapshot: () => {
+            const { sheets, cells, activeSheetId } = get();
+            const sheetData: Record<string, {
+                id: string;
+                name: string;
+                cells: Record<string, CellData>;
+                columnMeta: Record<string, never>;
+                rowMeta: Record<string, never>;
+            }> = {};
+
+            for (const sheet of sheets) {
+                const sheetCells: Record<string, CellData> = {};
+                for (const [key, cell] of Object.entries(cells)) {
+                    const firstColon = key.indexOf(":");
+                    const sid = key.slice(0, firstColon);
+                    if (sid === sheet.id) {
+                        // "sheetId:row:col" → "row:col"
+                        sheetCells[key.slice(firstColon + 1)] = cell;
+                    }
+                }
+                sheetData[sheet.id] = {
+                    id: sheet.id,
+                    name: sheet.name,
+                    cells: sheetCells,
+                    columnMeta: {},
+                    rowMeta: {},
+                };
+            }
+
+            const now = new Date().toISOString();
+            return {
+                id: `wb_${Date.now()}`,
+                name: "워크북",
+                sheets: sheetData,
+                sheetOrder: sheets.map((s) => s.id),
+                activeSheetId,
+                createdAt: now,
+                updatedAt: now,
+            } as SerializedWorkbookData;
+        },
     };
 });

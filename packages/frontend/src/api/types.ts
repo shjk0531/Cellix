@@ -1,5 +1,11 @@
 import type { CellValue } from "@cellix/shared";
-import type { DifficultyLevel, ProblemType } from "@cellix/shared";
+import type {
+    DifficultyLevel,
+    ProblemType,
+    ProblemSourceType,
+    ProblemCategory,
+    ProblemStatus,
+} from "@cellix/shared";
 
 export interface ProblemSummary {
     id: string;
@@ -7,14 +13,29 @@ export interface ProblemSummary {
     description: string;
     type: ProblemType;
     difficulty: DifficultyLevel;
+    level: number;
     score: number;
     timeLimit: number | null;
-    hints: string[];
-    tags: string[];
+    estimatedMinutes: number | null;
+    hints: string[] | null;
+    tags: string[] | null;
+    sourceType: ProblemSourceType;
+    category: ProblemCategory;
+    stepLevel: number | null;
+    status: ProblemStatus;
+    voteUp: number;
+    voteDown: number;
+    viewCount: number;
+    acceptanceRate: string | null;
+    solveCount: number;
+    reviewNote: string | null;
     isPublished: boolean;
+    createdBy: string | null;
     createdAt: string;
     updatedAt: string;
     templateWorkbook: unknown;
+    // 진행 상태 (로그인 사용자)
+    progress?: { progressStatus: string; bestScore: string | null } | null;
 }
 
 export interface CellRuleResult {

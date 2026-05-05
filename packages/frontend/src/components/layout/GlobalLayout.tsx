@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { NavLink, Outlet, Navigate, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, Navigate, useNavigate, Link } from 'react-router-dom'
 import { useAuthStore } from '../../store'
 import { useThemeStore } from '../../store'
 import './GlobalLayout.css'
@@ -8,6 +8,7 @@ import './GlobalLayout.css'
 
 const NAV_ITEMS = [
     { to: '/', label: '문제 목록', exact: true },
+    { to: '/my-problems', label: '내 문제', exact: false },
     { to: '/profile', label: '내 정보', exact: false },
 ] as const
 
@@ -85,8 +86,23 @@ export function GlobalLayout() {
                             </nav>
                         </div>
 
-                        {/* Right: theme toggle, user info, logout */}
+                        {/* Right: theme toggle, 문제 만들기, user info, logout */}
                         <div className="gl-nav-right">
+                            <Link
+                                to="/problems/create"
+                                style={{
+                                    padding: '6px 14px',
+                                    borderRadius: 'var(--radius-xl)',
+                                    background: 'var(--color-accent)',
+                                    color: 'var(--color-text-on-accent)',
+                                    fontSize: 'var(--font-size-sm)',
+                                    fontWeight: 'var(--font-weight-semibold)',
+                                    textDecoration: 'none',
+                                    whiteSpace: 'nowrap',
+                                }}
+                            >
+                                + 문제 만들기
+                            </Link>
                             <button
                                 className="gl-icon-btn"
                                 title={`테마: ${modeLabel}`}
