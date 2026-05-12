@@ -1,4 +1,4 @@
-use crate::evaluator::{CellVal, EvalContext, Evaluator, RangeVal};
+use crate::evaluator::{CellVal, EvalContext, Evaluator};
 use crate::parser::ast::Expr;
 use super::{collect_nums, collect_vals, matches_criteria, nums_from_range};
 

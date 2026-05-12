@@ -1,4 +1,6 @@
+import { Inject, Injectable } from "@nestjs/common";
 import { eq, desc } from "drizzle-orm";
+import { DB_TOKEN } from "../../../global/db/db.module.js";
 import type { DB } from "../../../global/db/index.js";
 import {
     users,
@@ -7,16 +9,19 @@ import {
     submissions,
 } from "../../../global/db/schema.js";
 
-export const userRepository = {
-    async findById(db: DB, id: string) {
-        return db.query.users.findFirst({
+@Injectable()
+export class UserRepository {
+    constructor(@Inject(DB_TOKEN) private readonly db: DB) {}
+
+    async findById(id: string) {
+        return this.db.query.users.findFirst({
             where: eq(users.id, id),
             columns: { passwordHash: false },
         });
-    },
+    }
 
-    async update(db: DB, id: string, data: { name?: string }) {
-        const [row] = await db
+    async update(id: string, data: { name?: string }) {
+        const [row] = await this.db
             .update(users)
             .set({ ...data, updatedAt: new Date() })
             .where(eq(users.id, id))
@@ -27,10 +32,10 @@ export const userRepository = {
                 role: users.role,
             });
         return row;
-    },
+    }
 
-    async findProgress(db: DB, userId: string) {
-        return db
+    async findProgress(userId: string) {
+        return this.db
             .select({
                 problemId: userProgress.problemId,
                 bestScore: userProgress.bestScore,
@@ -44,22 +49,22 @@ export const userRepository = {
             .from(userProgress)
             .innerJoin(problems, eq(userProgress.problemId, problems.id))
             .where(eq(userProgress.userId, userId));
-    },
+    }
 
-    async findSubmissions(db: DB, userId: string, page: number, limit: number) {
+    async findSubmissions(userId: string, page: number, limit: number) {
         const offset = (page - 1) * limit;
-        return db
+        return this.db
             .select()
             .from(submissions)
             .where(eq(submissions.userId, userId))
             .orderBy(desc(submissions.submittedAt))
             .limit(limit)
             .offset(offset);
-    },
+    }
 
-    async findAll(db: DB) {
-        return db.query.users.findMany({
+    async findAll() {
+        return this.db.query.users.findMany({
             columns: { passwordHash: false },
         });
-    },
-};
+    }
+}

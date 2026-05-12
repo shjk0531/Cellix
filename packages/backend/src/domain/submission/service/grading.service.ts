@@ -1,4 +1,5 @@
-import { createRequire } from "node:module";
+﻿import { createRequire } from "node:module";
+import { Injectable } from "@nestjs/common";
 import type { FormulaEngine as IFormulaEngine } from "formula-engine-node";
 import type { WorkbookData, CellValue } from "@cellix/shared";
 import { deserializeWorkbook } from "@cellix/shared";
@@ -15,6 +16,7 @@ const { FormulaEngine } = _require("formula-engine-node") as {
     FormulaEngine: new () => IFormulaEngine;
 };
 
+@Injectable()
 export class GradingService {
     async grade(
         submittedRaw: unknown,
@@ -144,7 +146,7 @@ export class GradingService {
                 expectedValue: rule.expectedValue,
                 formulaUsed,
                 formulaMatched,
-                hint: rule.hint ?? `셀에 오류가 있습니다: ${parsed.v}`,
+                hint: rule.hint ?? `????ㅻ쪟媛 ?덉뒿?덈떎: ${parsed.v}`,
             };
         }
 
@@ -213,7 +215,7 @@ export class GradingService {
                 passed: false,
                 earnedScore: 0,
                 maxScore: rule.scoreWeight,
-                hint: rule.hint ?? `"${rule.name}" 이름의 표가 없습니다.`,
+                hint: rule.hint ?? `"${rule.name}" ?대쫫???쒓? ?놁뒿?덈떎.`,
             };
         }
 
@@ -232,7 +234,7 @@ export class GradingService {
                     maxScore: rule.scoreWeight,
                     hint:
                         rule.hint ??
-                        `표 컬럼 헤더가 올바르지 않습니다. 예상: [${rule.expectedColumns.join(", ")}]`,
+                        `??而щ읆 ?ㅻ뜑媛 ?щ컮瑜댁? ?딆뒿?덈떎. ?덉긽: [${rule.expectedColumns.join(", ")}]`,
                 };
             }
         }
@@ -292,17 +294,17 @@ export class GradingService {
         const parts: string[] = [];
         if (rule.expectedValue !== undefined && rule.expectedValue !== null) {
             parts.push(
-                `예상값: ${rule.expectedValue}, 실제값: ${actualValue ?? "(빈 셀)"}`,
+                `?덉긽媛? ${rule.expectedValue}, ?ㅼ젣媛? ${actualValue ?? "(鍮??)"}`,
             );
         }
         if (rule.checkFormula && formulaMatched === false) {
             parts.push(
                 formulaUsed
-                    ? `수식 패턴이 맞지 않습니다 (사용된 수식: ${formulaUsed})`
-                    : "수식이 없습니다",
+                    ? `?섏떇 ?⑦꽩??留욎? ?딆뒿?덈떎 (?ъ슜???섏떇: ${formulaUsed})`
+                    : "?섏떇???놁뒿?덈떎",
             );
         }
-        return parts.join(" / ") || "오답입니다.";
+        return parts.join(" / ") || "?ㅻ떟?낅땲??";
     }
 
     private _buildFeedback(
@@ -311,22 +313,21 @@ export class GradingService {
         percentage: number,
     ): string {
         if (percentage >= 100)
-            return "완벽합니다! 모든 항목을 정확하게 완성했습니다.";
+            return "?꾨꼍?⑸땲?? 紐⑤뱺 ??ぉ???뺥솗?섍쾶 ?꾩꽦?덉뒿?덈떎.";
         const failedCells = cellResults.filter((r) => !r.passed);
         const failedTables = tableResults.filter((r) => !r.passed);
         const total = failedCells.length + failedTables.length;
-        if (total === 0) return "훌륭합니다!";
-        const parts = [`${total}개 항목이 틀렸습니다.`];
+        if (total === 0) return "?뚮??⑸땲??";
+        const parts = [`${total}媛???ぉ????몄뒿?덈떎.`];
         if (failedCells.length > 0)
             parts.push(
-                `틀린 셀: ${failedCells.map((r) => r.address).join(", ")}`,
+                `?由??: ${failedCells.map((r) => r.address).join(", ")}`,
             );
         if (failedTables.length > 0)
             parts.push(
-                `표 오류: ${failedTables.map((r) => r.name).join(", ")}`,
+                `???ㅻ쪟: ${failedTables.map((r) => r.name).join(", ")}`,
             );
         return parts.join(" ");
     }
 }
 
-export const gradingService = new GradingService();

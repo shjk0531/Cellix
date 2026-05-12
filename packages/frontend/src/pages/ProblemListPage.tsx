@@ -144,9 +144,9 @@ export function ProblemListPage() {
                             }}>
                                 {p.description.slice(0, 80)}{p.description.length > 80 ? '...' : ''}
                             </div>
-                            {p.tags.length > 0 && (
+                            {(p.tags?.length ?? 0) > 0 && (
                                 <div style={{ marginTop: 6, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                                    {p.tags.map(t => (
+                                    {p.tags?.map(t => (
                                         <span key={t} style={{
                                             padding: '2px 6px',
                                             background: 'var(--color-bg-sunken)',

@@ -1,24 +1,27 @@
-import type { DB } from "../../../global/db/index.js";
-import { userRepository } from "../repository/user.repository.js";
+import { Injectable } from "@nestjs/common";
+import { UserRepository } from "../repository/user.repository.js";
 
-export const userService = {
-    async getMe(db: DB, userId: string) {
-        return userRepository.findById(db, userId);
-    },
+@Injectable()
+export class UserService {
+    constructor(private readonly userRepository: UserRepository) {}
 
-    async updateMe(db: DB, userId: string, data: { name?: string }) {
-        return userRepository.update(db, userId, data);
-    },
+    async getMe(userId: string) {
+        return this.userRepository.findById(userId);
+    }
 
-    async getProgress(db: DB, userId: string) {
-        return userRepository.findProgress(db, userId);
-    },
+    async updateMe(userId: string, data: { name?: string }) {
+        return this.userRepository.update(userId, data);
+    }
 
-    async getSubmissions(db: DB, userId: string, page: number, limit: number) {
-        return userRepository.findSubmissions(db, userId, page, limit);
-    },
+    async getProgress(userId: string) {
+        return this.userRepository.findProgress(userId);
+    }
 
-    async getAllUsers(db: DB) {
-        return userRepository.findAll(db);
-    },
-};
+    async getSubmissions(userId: string, page: number, limit: number) {
+        return this.userRepository.findSubmissions(userId, page, limit);
+    }
+
+    async getAllUsers() {
+        return this.userRepository.findAll();
+    }
+}

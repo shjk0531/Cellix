@@ -64,12 +64,10 @@ function ChartItem({
             renderer: "canvas",
         });
         instanceRef.current = instance;
-        instance.setOption(buildEChartsOption(chart, getCell));
         return () => {
             instance.dispose();
             instanceRef.current = null;
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // 차트 데이터/설정 변경 시 옵션 갱신

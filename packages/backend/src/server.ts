@@ -1,11 +1,24 @@
-import { buildApp } from "./app.js";
+import "reflect-metadata";
+import { NestFactory } from "@nestjs/core";
+import { ApiResponseInterceptor } from "./global/common/index.js";
 import { env } from "./global/config/index.js";
+import { HttpExceptionFilter } from "./global/exception/index.js";
+import { AppModule } from "./app.module.js";
 
-const app = await buildApp();
+const app = await NestFactory.create(AppModule, {
+    logger:
+        env.NODE_ENV === "development"
+            ? ["log", "error", "warn", "debug", "verbose"]
+            : ["log", "error", "warn"],
+});
+
+app.enableCors({ origin: env.CORS_ORIGIN, credentials: true });
+app.useGlobalFilters(new HttpExceptionFilter());
+app.useGlobalInterceptors(new ApiResponseInterceptor());
 
 try {
-    await app.listen({ port: env.PORT, host: env.HOST });
+    await app.listen(env.PORT, env.HOST);
 } catch (err) {
-    app.log.error(err);
+    console.error(err);
     process.exit(1);
 }

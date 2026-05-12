@@ -1,7 +1,12 @@
+import {
+    ForbiddenException,
+    Injectable,
+    NotFoundException,
+    BadRequestException,
+} from "@nestjs/common";
 import * as XLSX from "xlsx";
 import type { SerializedWorkbookData } from "@cellix/shared";
-import type { DB } from "../../../global/db/index.js";
-import { problemRepository } from "../repository/problem.repository.js";
+import { ProblemRepository } from "../repository/problem.repository.js";
 import type { GetProblemsQuery, ProblemBody } from "../dto/problem.dto.js";
 
 function buildXlsxBuffer(data: SerializedWorkbookData): Buffer {
@@ -39,152 +44,126 @@ function buildXlsxBuffer(data: SerializedWorkbookData): Buffer {
     return XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
 }
 
-export const problemService = {
+@Injectable()
+export class ProblemService {
+    constructor(private readonly problemRepository: ProblemRepository) {}
+
     async findAll(
-        db: DB,
         query: GetProblemsQuery,
         options: { isAdmin: boolean; userId?: string },
     ) {
-        return problemRepository.findAll(db, query, options);
-    },
+        return this.problemRepository.findAll(query, options);
+    }
 
-    async findById(db: DB, id: string, userId?: string) {
-        const row = await problemRepository.findById(db, id);
+    async findById(id: string, userId?: string) {
+        const row = await this.problemRepository.findById(id);
         if (!row) return null;
 
-        await problemRepository.incrementViewCount(db, id);
+        await this.problemRepository.incrementViewCount(id);
 
         let progress = null;
         if (userId) {
-            progress = await problemRepository.findProgress(db, userId, id);
+            progress = await this.problemRepository.findProgress(userId, id);
         }
 
         return { ...row, progress };
-    },
+    }
 
-    async getTemplateXlsx(db: DB, id: string) {
-        const row = await problemRepository.findByIdWithPrivate(db, id);
+    async getTemplateXlsx(id: string) {
+        const row = await this.problemRepository.findByIdWithPrivate(id);
         if (!row || !row.templateWorkbook) return null;
         const data = row.templateWorkbook as unknown as SerializedWorkbookData;
         return { title: row.title, buffer: buildXlsxBuffer(data) };
-    },
+    }
 
     async create(
-        db: DB,
         data: ProblemBody,
         createdBy: string,
         role: string,
     ) {
         const isAdmin = role === "admin";
-        return problemRepository.create(db, {
+        return this.problemRepository.create({
             ...data,
-            // 일반 사용자가 만든 문제는 "community" 강제, draft 상태로 시작
+            // ?�반 ?�용?��? 만든 문제??"community" 강제, draft ?�태�??�작
             sourceType: isAdmin ? (data.sourceType ?? "official") : "community",
             status: isAdmin ? (data.status ?? "published") : "draft",
             isPublished: isAdmin,
             createdBy,
         });
-    },
+    }
 
     async update(
-        db: DB,
         id: string,
         data: Partial<ProblemBody>,
         requestUserId: string,
         role: string,
     ) {
-        const existing = await problemRepository.findByIdWithPrivate(db, id);
+        const existing = await this.problemRepository.findByIdWithPrivate(id);
         if (!existing) {
-            throw Object.assign(new Error("Not found"), {
-                statusCode: 404,
-                code: "NOT_FOUND",
-            });
+            throw new NotFoundException({ error: "Not found", code: "NOT_FOUND" });
         }
 
-        // 본인 문제 또는 admin만 수정 가능
+        // 본인 문제 ?�는 admin�??�정 가??
         if (role !== "admin" && existing.createdBy !== requestUserId) {
-            throw Object.assign(new Error("Forbidden"), {
-                statusCode: 403,
-                code: "FORBIDDEN",
-            });
+            throw new ForbiddenException({ error: "Forbidden", code: "FORBIDDEN" });
         }
 
-        const row = await problemRepository.update(db, id, data);
+        const row = await this.problemRepository.update(id, data);
         if (!row) {
-            throw Object.assign(new Error("Not found"), {
-                statusCode: 404,
-                code: "NOT_FOUND",
-            });
+            throw new NotFoundException({ error: "Not found", code: "NOT_FOUND" });
         }
         return row;
-    },
+    }
 
     async delete(
-        db: DB,
         id: string,
         requestUserId: string,
         role: string,
     ) {
-        const existing = await problemRepository.findByIdWithPrivate(db, id);
+        const existing = await this.problemRepository.findByIdWithPrivate(id);
         if (!existing) {
-            throw Object.assign(new Error("Not found"), {
-                statusCode: 404,
-                code: "NOT_FOUND",
-            });
+            throw new NotFoundException({ error: "Not found", code: "NOT_FOUND" });
         }
         if (role !== "admin" && existing.createdBy !== requestUserId) {
-            throw Object.assign(new Error("Forbidden"), {
-                statusCode: 403,
-                code: "FORBIDDEN",
-            });
+            throw new ForbiddenException({ error: "Forbidden", code: "FORBIDDEN" });
         }
-        return problemRepository.delete(db, id);
-    },
+        return this.problemRepository.delete(id);
+    }
 
-    // 일반 사용자가 문제 검토 요청 (draft → pending_review)
-    async submitForReview(db: DB, id: string, requestUserId: string) {
-        const existing = await problemRepository.findByIdWithPrivate(db, id);
+    // ?�반 ?�용?��? 문제 검???�청 (draft ??pending_review)
+    async submitForReview(id: string, requestUserId: string) {
+        const existing = await this.problemRepository.findByIdWithPrivate(id);
         if (!existing) {
-            throw Object.assign(new Error("Not found"), {
-                statusCode: 404,
-                code: "NOT_FOUND",
-            });
+            throw new NotFoundException({ error: "Not found", code: "NOT_FOUND" });
         }
         if (existing.createdBy !== requestUserId) {
-            throw Object.assign(new Error("Forbidden"), {
-                statusCode: 403,
-                code: "FORBIDDEN",
-            });
+            throw new ForbiddenException({ error: "Forbidden", code: "FORBIDDEN" });
         }
         if (existing.status !== "draft") {
-            throw Object.assign(
-                new Error("Only draft problems can be submitted for review"),
-                { statusCode: 400, code: "INVALID_STATUS" },
-            );
+            throw new BadRequestException({
+                error: "Only draft problems can be submitted for review",
+                code: "INVALID_STATUS",
+            });
         }
-        return problemRepository.update(db, id, {
+        return this.problemRepository.update(id, {
             status: "pending_review",
         } as Partial<ProblemBody>);
-    },
+    }
 
-    // admin 검토 처리 (pending_review → published | rejected)
+    // admin 검??처리 (pending_review ??published | rejected)
     async reviewProblem(
-        db: DB,
         id: string,
         verdict: "published" | "rejected",
         reviewNote?: string,
     ) {
-        const existing = await problemRepository.findByIdWithPrivate(db, id);
+        const existing = await this.problemRepository.findByIdWithPrivate(id);
         if (!existing) {
-            throw Object.assign(new Error("Not found"), {
-                statusCode: 404,
-                code: "NOT_FOUND",
-            });
+            throw new NotFoundException({ error: "Not found", code: "NOT_FOUND" });
         }
-        return problemRepository.update(db, id, {
+        return this.problemRepository.update(id, {
             status: verdict,
             reviewNote: reviewNote ?? null,
             isPublished: verdict === "published",
         } as Partial<ProblemBody>);
-    },
-};
+    }
+}

@@ -7,7 +7,25 @@ export interface TooltipProps {
     content: React.ReactNode;
     placement?: TooltipPlacement;
     delay?: number;
-    children: React.ReactElement;
+    children: React.ReactElement<TooltipTriggerProps>;
+}
+
+interface TooltipTriggerProps {
+    ref?: React.Ref<HTMLElement>;
+    onMouseEnter?: (event: React.MouseEvent<HTMLElement>) => void;
+    onMouseLeave?: (event: React.MouseEvent<HTMLElement>) => void;
+    onFocus?: (event: React.FocusEvent<HTMLElement>) => void;
+    onBlur?: (event: React.FocusEvent<HTMLElement>) => void;
+}
+
+function assignRef<T>(ref: React.Ref<T> | undefined, value: T | null): void {
+    if (typeof ref === "function") {
+        ref(value);
+        return;
+    }
+    if (ref) {
+        (ref as React.MutableRefObject<T | null>).current = value;
+    }
 }
 
 interface Pos {
@@ -69,30 +87,28 @@ export function Tooltip({
         setPos(null);
     }, []);
 
+    const childProps = children.props;
+
     const trigger = React.cloneElement(children, {
         ref: (node: HTMLElement | null) => {
             triggerRef.current = node;
-            const { ref } = children as React.RefAttributes<HTMLElement>;
-            if (typeof ref === "function") ref(node);
-            else if (ref)
-                (ref as React.MutableRefObject<HTMLElement | null>).current =
-                    node;
+            assignRef(childProps.ref, node);
         },
-        onMouseEnter: (e: React.MouseEvent) => {
+        onMouseEnter: (e: React.MouseEvent<HTMLElement>) => {
             show();
-            children.props.onMouseEnter?.(e);
+            childProps.onMouseEnter?.(e);
         },
-        onMouseLeave: (e: React.MouseEvent) => {
+        onMouseLeave: (e: React.MouseEvent<HTMLElement>) => {
             hide();
-            children.props.onMouseLeave?.(e);
+            childProps.onMouseLeave?.(e);
         },
-        onFocus: (e: React.FocusEvent) => {
+        onFocus: (e: React.FocusEvent<HTMLElement>) => {
             show();
-            children.props.onFocus?.(e);
+            childProps.onFocus?.(e);
         },
-        onBlur: (e: React.FocusEvent) => {
+        onBlur: (e: React.FocusEvent<HTMLElement>) => {
             hide();
-            children.props.onBlur?.(e);
+            childProps.onBlur?.(e);
         },
     });
 

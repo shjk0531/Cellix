@@ -1,4 +1,5 @@
-export { problemController } from "./controller/problem.controller.js";
-export { problemService } from "./service/problem.service.js";
-export { problemRepository } from "./repository/problem.repository.js";
+export * from "./problem.module.js";
+export * from "./controller/problem.controller.js";
+export * from "./repository/problem.repository.js";
+export * from "./service/problem.service.js";
 export type { Problem, PublicProblem } from "./entity/problem.entity.js";

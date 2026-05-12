@@ -50,7 +50,7 @@ export class GoalSeekSolver {
 
         // 이분법으로 lo/hi의 부호가 반대인 구간 탐색
         let fLo = (await evaluate(lo)) - targetValue;
-        let fHi = (await evaluate(hi)) - targetValue;
+        const fHi = (await evaluate(hi)) - targetValue;
 
         // 같은 부호이면 범위 확장 시도
         if (Math.sign(fLo) === Math.sign(fHi)) {
@@ -65,7 +65,6 @@ export class GoalSeekSolver {
                     lo = a;
                     hi = b;
                     fLo = fa;
-                    fHi = fb;
                     found = true;
                 }
             }
@@ -113,7 +112,6 @@ export class GoalSeekSolver {
                 fLo = fMid;
             } else {
                 hi = mid;
-                fHi = fMid;
             }
         }
 

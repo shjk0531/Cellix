@@ -6,6 +6,8 @@
         "outDir": "./dist",
         "rootDir": "./src",
         "composite": true,
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
         "paths": {
             "@cellix/shared": ["../shared/src/index.ts"],
             "formula-engine-node": ["../formula-engine/pkg-node/formula_engine.d.ts"]

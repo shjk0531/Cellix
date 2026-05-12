@@ -8,9 +8,8 @@ import {
 } from "../api";
 import { SpreadsheetShell } from "../components/spreadsheet";
 import { ResultModal } from "../components/exam";
-import { useWorkbookStore, useAuthStore } from "../store";
+import { useWorkbookStore } from "../store";
 import { formulaEngine } from "../workers";
-import { serializeWorkbook, deserializeWorkbook } from "@cellix/shared";
 import type { SerializedWorkbookData } from "@cellix/shared";
 import type { CellData } from "@cellix/shared";
 
@@ -34,18 +33,18 @@ export function ProblemPage() {
     const [elapsed, setElapsed] = useState(0);
 
     const engineReady = useWorkbookStore((s) => s.engineReady);
-    const { logout } = useAuthStore();
-
     const templateRef = useRef<SerializedWorkbookData | null>(null);
     const prevSheetsRef = useRef<string[]>([]);
 
     // ── 문제 로드 ──────────────────────────────────────────────────────────────
     useEffect(() => {
         if (!id) return;
-        setLoadingProblem(true);
-        setLoadError("");
-        setProblem(null);
-        useWorkbookStore.getState().setEngineReady(false);
+        queueMicrotask(() => {
+            setLoadingProblem(true);
+            setLoadError("");
+            setProblem(null);
+            useWorkbookStore.getState().setEngineReady(false);
+        });
 
         apiClient
             .get<ProblemSummary>(`/api/problems/${id}`)
@@ -151,7 +150,7 @@ export function ProblemPage() {
     // ── 타이머 ────────────────────────────────────────────────────────────────
     useEffect(() => {
         if (!problem) return;
-        setElapsed(0);
+        queueMicrotask(() => setElapsed(0));
         const interval = setInterval(() => setElapsed((e) => e + 1), 1000);
         return () => clearInterval(interval);
     }, [problem]);

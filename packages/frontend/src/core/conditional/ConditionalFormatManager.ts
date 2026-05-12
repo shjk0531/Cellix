@@ -5,7 +5,6 @@ import type {
     CondFmtCellValueRule,
     CondFmtColorScaleRule,
     CondFmtDataBarRule,
-    CondFmtTopBottomRule,
 } from "./types";
 
 type CellVal = string | number | boolean | null;

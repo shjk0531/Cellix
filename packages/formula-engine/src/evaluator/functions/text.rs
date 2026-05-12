@@ -1,6 +1,5 @@
 use crate::evaluator::{CellVal, EvalContext, Evaluator};
 use crate::parser::ast::Expr;
-use super::wildcard_match;
 
 pub fn call(name: &str, args: &[Expr], ctx: &dyn EvalContext, current_row: Option<u32>) -> CellVal {
     match name.to_uppercase().as_str() {

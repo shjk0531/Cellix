@@ -1,6 +1,5 @@
-use crate::evaluator::{CellVal, EvalContext, Evaluator, RangeVal};
+use crate::evaluator::{CellVal, EvalContext, Evaluator};
 use crate::parser::ast::Expr;
-use super::matches_criteria;
 
 pub fn call(name: &str, args: &[Expr], ctx: &dyn EvalContext, current_row: Option<u32>) -> CellVal {
     match name.to_uppercase().as_str() {
@@ -205,7 +204,7 @@ fn row_fn(args: &[Expr], ctx: &dyn EvalContext, cr: Option<u32>) -> CellVal {
     CellVal::Number((row + 1) as f64)
 }
 
-fn col_fn(args: &[Expr], ctx: &dyn EvalContext, cr: Option<u32>) -> CellVal {
+fn col_fn(args: &[Expr], _ctx: &dyn EvalContext, _cr: Option<u32>) -> CellVal {
     if args.is_empty() { return CellVal::Number(1.0); }
     let col = match &args[0] {
         Expr::CellRef { col, .. } => *col,

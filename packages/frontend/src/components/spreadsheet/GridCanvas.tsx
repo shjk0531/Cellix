@@ -38,6 +38,11 @@ type FilterDropdownState = {
     currentCriteria: FilterCriteria | undefined;
 };
 
+type ChartOverlayRuntime = {
+    viewport: ViewportManager;
+    getCell: (sheetId: string, row: number, col: number) => CellData | null;
+};
+
 export function GridCanvas() {
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -49,11 +54,8 @@ export function GridCanvas() {
 
     // ── 차트 오버레이 상태 ─────────────────────────────────────────────────────
     const activeSheetId = useWorkbookStore((s) => s.activeSheetId);
-    const viewportRef = useRef<ViewportManager | null>(null);
-    const getCellBySheetRef = useRef<
-        ((sheetId: string, row: number, col: number) => CellData | null) | null
-    >(null);
-    const [isEngineReady, setIsEngineReady] = useState(false);
+    const [chartOverlayRuntime, setChartOverlayRuntime] =
+        useState<ChartOverlayRuntime | null>(null);
     const [selectedChartId, setSelectedChartId] = useState<string | null>(null);
     const [chartDataVersion, setChartDataVersion] = useState(0);
     const [, setChartListVersion] = useState(0);
@@ -202,10 +204,11 @@ export function GridCanvas() {
             );
 
             // ── 차트 오버레이 연결 ────────────────────────────────────────────────
-            viewportRef.current = viewport;
-            getCellBySheetRef.current = (sid: string, r: number, c: number) =>
-                useWorkbookStore.getState().getCell(sid, r, c);
-            setIsEngineReady(true);
+            setChartOverlayRuntime({
+                viewport,
+                getCell: (sid: string, r: number, c: number) =>
+                    useWorkbookStore.getState().getCell(sid, r, c),
+            });
             useWorkbookStore.getState().setEngineReady(true);
 
             // chartManager 변경 시 차트 목록 버전 업데이트
@@ -453,18 +456,16 @@ export function GridCanvas() {
                 style={{ display: "block" }}
                 onMouseDown={() => setSelectedChartId(null)}
             />
-            {isEngineReady &&
-                viewportRef.current &&
-                getCellBySheetRef.current && (
-                    <ChartOverlay
-                        sheetId={activeSheetId}
-                        viewport={viewportRef.current}
-                        getCell={getCellBySheetRef.current}
-                        selectedChartId={selectedChartId}
-                        onChartSelect={setSelectedChartId}
-                        dataVersion={chartDataVersion}
-                    />
-                )}
+            {chartOverlayRuntime && (
+                <ChartOverlay
+                    sheetId={activeSheetId}
+                    viewport={chartOverlayRuntime.viewport}
+                    getCell={chartOverlayRuntime.getCell}
+                    selectedChartId={selectedChartId}
+                    onChartSelect={setSelectedChartId}
+                    dataVersion={chartDataVersion}
+                />
+            )}
             {filterDropdown && (
                 <FilterDropdown
                     col={filterDropdown.col}

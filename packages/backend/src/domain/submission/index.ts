@@ -1,12 +1,5 @@
-export { submissionController } from "./controller/submission.controller.js";
-export { submissionService } from "./service/submission.service.js";
-export { gradingService, GradingService } from "./service/grading.service.js";
-export type {
-    Submission,
-    GradingConfig,
-    GradingResult,
-    CellGradingRule,
-    TableGradingRule,
-    ChartGradingRule,
-    CellRuleResult,
-} from "./entity/submission.entity.js";
+export * from "./submission.module.js";
+export * from "./controller/submission.controller.js";
+export * from "./repository/submission.repository.js";
+export * from "./service/grading.service.js";
+export * from "./service/submission.service.js";

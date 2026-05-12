@@ -1,26 +1,33 @@
-import type { DB } from "../../../global/db/index.js";
-import { submissionRepository } from "../repository/submission.repository.js";
-import { gradingService } from "./grading.service.js";
+import {
+    ForbiddenException,
+    Injectable,
+    NotFoundException,
+} from "@nestjs/common";
+import { SubmissionRepository } from "../repository/submission.repository.js";
+import { GradingService } from "./grading.service.js";
 import type { GradingConfig } from "../entity/submission.entity.js";
-import { problemRepository } from "../../problem/repository/problem.repository.js";
+import { ProblemRepository } from "../../problem/repository/problem.repository.js";
 
-export const submissionService = {
-    async submit(
-        db: DB,
-        input: {
-            userId: string;
-            problemId: string;
-            workbookData: unknown;
-            timeSpentSeconds?: number;
-        },
-    ) {
-        const problem = await problemRepository.findByIdWithPrivate(
-            db,
+@Injectable()
+export class SubmissionService {
+    constructor(
+        private readonly submissionRepository: SubmissionRepository,
+        private readonly gradingService: GradingService,
+        private readonly problemRepository: ProblemRepository,
+    ) {}
+
+    async submit(input: {
+        userId: string;
+        problemId: string;
+        workbookData: unknown;
+        timeSpentSeconds?: number;
+    }) {
+        const problem = await this.problemRepository.findByIdWithPrivate(
             input.problemId,
         );
         if (!problem) {
-            throw Object.assign(new Error("Problem not found"), {
-                statusCode: 404,
+            throw new NotFoundException({
+                error: "Problem not found",
                 code: "NOT_FOUND",
             });
         }
@@ -30,7 +37,7 @@ export const submissionService = {
         let gradingResult;
         let status: "graded" | "error" = "graded";
         try {
-            gradingResult = await gradingService.grade(
+            gradingResult = await this.gradingService.grade(
                 input.workbookData,
                 config,
             );
@@ -42,12 +49,12 @@ export const submissionService = {
                 status: "fail" as const,
                 cellResults: [],
                 tableResults: [],
-                feedback: "채점 중 오류가 발생했습니다.",
+                feedback: "Grading failed.",
             };
             status = "error";
         }
 
-        const submission = await submissionRepository.create(db, {
+        const submission = await this.submissionRepository.create({
             userId: input.userId,
             problemId: input.problemId,
             workbookData: input.workbookData,
@@ -56,26 +63,25 @@ export const submissionService = {
             timeSpentSeconds: input.timeSpentSeconds,
         });
 
-        await submissionRepository.upsertProgress(
-            db,
+        await this.submissionRepository.upsertProgress(
             input.userId,
             input.problemId,
             gradingResult.totalScore,
         );
 
         return { submission, result: gradingResult };
-    },
+    }
 
-    async findById(db: DB, id: string) {
-        return submissionRepository.findById(db, id);
-    },
+    async findById(id: string) {
+        return this.submissionRepository.findById(id);
+    }
 
-    async findByUser(db: DB, userId: string, page: number, limit: number) {
-        return submissionRepository.findByUser(db, userId, page, limit);
-    },
+    async findByUser(userId: string, page: number, limit: number) {
+        return this.submissionRepository.findByUser(userId, page, limit);
+    }
 
-    async getProblemStats(db: DB, problemId: string) {
-        const stats = await submissionRepository.getProblemStats(db, problemId);
+    async getProblemStats(problemId: string) {
+        const stats = await this.submissionRepository.getProblemStats(problemId);
         const total = stats.total;
         const passCount = stats.passCount ?? 0;
         const avgPct = stats.avgPercentage
@@ -88,5 +94,17 @@ export const submissionService = {
             passRate:
                 total > 0 ? Math.round((passCount / total) * 10000) / 100 : 0,
         };
-    },
-};
+    }
+
+    assertCanRead(
+        row: { userId: string },
+        user: { id: string; role: string },
+    ): void {
+        if (row.userId !== user.id && user.role !== "admin") {
+            throw new ForbiddenException({
+                error: "Forbidden",
+                code: "FORBIDDEN",
+            });
+        }
+    }
+}

@@ -1,63 +1,56 @@
-import type { FastifyPluginAsync } from "fastify";
+import {
+    Body,
+    Controller,
+    Get,
+    NotFoundException,
+    Patch,
+    Query,
+    UseGuards,
+} from "@nestjs/common";
 import { UpdateMeBodyDto, PaginationQueryDto } from "../dto/user.dto.js";
-import { userService } from "../service/user.service.js";
+import type { PaginationQuery, UpdateMeBody } from "../dto/user.dto.js";
+import { UserService } from "../service/user.service.js";
+import { AdminGuard, AuthUser, JwtAuthGuard, type AuthUser as AuthUserType } from "../../../global/security/index.js";
+import { ZodValidationPipe } from "../../../global/common/index.js";
 
-export const userController: FastifyPluginAsync = async (app) => {
-    app.get(
-        "/me",
-        { preHandler: [app.authenticate] },
-        async (request, reply) => {
-            const user = await userService.getMe(app.db, request.userId);
-            if (!user) {
-                return reply.status(404).send({
-                    success: false,
-                    error: "Not found",
-                    code: "NOT_FOUND",
-                });
-            }
-            return { success: true, data: user };
-        },
-    );
+@Controller("api/users")
+@UseGuards(JwtAuthGuard)
+export class UserController {
+    constructor(private readonly userService: UserService) {}
 
-    app.patch("/me", { preHandler: [app.authenticate] }, async (request) => {
-        const body = UpdateMeBodyDto.parse(request.body);
-        const user = await userService.updateMe(app.db, request.userId, body);
-        return { success: true, data: user };
-    });
-
-    app.get(
-        "/me/progress",
-        { preHandler: [app.authenticate] },
-        async (request) => {
-            const rows = await userService.getProgress(app.db, request.userId);
-            return { success: true, data: rows };
-        },
-    );
-
-    app.get(
-        "/me/submissions",
-        { preHandler: [app.authenticate] },
-        async (request) => {
-            const query = PaginationQueryDto.parse(request.query);
-            const rows = await userService.getSubmissions(
-                app.db,
-                request.userId,
-                query.page,
-                query.limit,
-            );
-            return { success: true, data: rows };
-        },
-    );
-
-    app.get("/", { preHandler: [app.authenticate] }, async (request, reply) => {
-        if (request.userRole !== "admin") {
-            return reply.status(403).send({
-                success: false,
-                error: "Forbidden",
-                code: "FORBIDDEN",
-            });
+    @Get("me")
+    async me(@AuthUser() authUser: AuthUserType) {
+        const user = await this.userService.getMe(authUser.id);
+        if (!user) {
+            throw new NotFoundException({ error: "Not found", code: "NOT_FOUND" });
         }
-        const rows = await userService.getAllUsers(app.db);
-        return { success: true, data: rows };
-    });
-};
+        return user;
+    }
+
+    @Patch("me")
+    async updateMe(
+        @AuthUser() authUser: AuthUserType,
+        @Body(new ZodValidationPipe(UpdateMeBodyDto)) body: UpdateMeBody,
+    ) {
+        return this.userService.updateMe(authUser.id, body);
+    }
+
+    @Get("me/progress")
+    getProgress(@AuthUser() authUser: AuthUserType) {
+        return this.userService.getProgress(authUser.id);
+    }
+
+    @Get("me/submissions")
+    getSubmissions(
+        @AuthUser() authUser: AuthUserType,
+        @Query(new ZodValidationPipe(PaginationQueryDto)) query: PaginationQuery,
+    ) {
+        return this.userService.getSubmissions(authUser.id, query.page, query.limit);
+    }
+
+    @Get()
+    @UseGuards(AdminGuard)
+    getAllUsers() {
+        return this.userService.getAllUsers();
+    }
+}

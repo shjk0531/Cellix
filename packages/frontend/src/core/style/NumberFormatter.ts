@@ -15,7 +15,7 @@ export class NumberFormatter {
 
     private static _applyNumericFormat(num: number, fmt: string): string {
         if (fmt.endsWith("%")) {
-            const decimals = (fmt.match(/\.(\d+)/) ?? [, ""])[1]?.length ?? 0;
+            const decimals = fmt.match(/\.(\d+)/)?.[1]?.length ?? 0;
             return (num * 100).toFixed(decimals) + "%";
         }
 

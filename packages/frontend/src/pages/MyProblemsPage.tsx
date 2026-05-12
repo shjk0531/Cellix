@@ -459,7 +459,7 @@ export function MyProblemsPage() {
     }, []);
 
     useEffect(() => {
-        fetchProblems();
+        queueMicrotask(fetchProblems);
     }, [fetchProblems]);
 
     const showToast = (msg: string, type: "success" | "error") => {

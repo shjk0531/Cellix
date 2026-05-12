@@ -1,80 +1,70 @@
-import type { FastifyPluginAsync } from "fastify";
+import {
+    Body,
+    Controller,
+    Get,
+    NotFoundException,
+    Param,
+    Post,
+    Query,
+    UseGuards,
+} from "@nestjs/common";
 import { SubmitBodyDto, PaginationQueryDto } from "../dto/submission.dto.js";
-import { submissionService } from "../service/submission.service.js";
+import type { PaginationQuery, SubmitBody } from "../dto/submission.dto.js";
+import { SubmissionService } from "../service/submission.service.js";
+import {
+    AdminGuard,
+    AuthUser,
+    JwtAuthGuard,
+    type AuthUser as AuthUserType,
+} from "../../../global/security/index.js";
+import { ZodValidationPipe } from "../../../global/common/index.js";
 
-export const submissionController: FastifyPluginAsync = async (app) => {
-    app.post(
-        "/",
-        { preHandler: [app.authenticate] },
-        async (request, reply) => {
-            const body = SubmitBodyDto.parse(request.body);
-            const { submission, result } = await submissionService.submit(
-                app.db,
-                {
-                    userId: request.userId,
-                    problemId: body.problemId,
-                    workbookData: body.workbookData,
-                    timeSpentSeconds: body.timeSpentSeconds,
-                },
-            );
-            return reply
-                .status(201)
-                .send({ success: true, data: { submission, result } });
-        },
-    );
+@Controller("api/submissions")
+@UseGuards(JwtAuthGuard)
+export class SubmissionController {
+    constructor(private readonly submissionService: SubmissionService) {}
 
-    app.get(
-        "/:id",
-        { preHandler: [app.authenticate] },
-        async (request, reply) => {
-            const { id } = request.params as { id: string };
-            const row = await submissionService.findById(app.db, id);
-            if (!row) {
-                return reply.status(404).send({
-                    success: false,
-                    error: "Not found",
-                    code: "NOT_FOUND",
-                });
-            }
-            if (row.userId !== request.userId && request.userRole !== "admin") {
-                return reply.status(403).send({
-                    success: false,
-                    error: "Forbidden",
-                    code: "FORBIDDEN",
-                });
-            }
-            return { success: true, data: row };
-        },
-    );
+    @Post()
+    submit(
+        @AuthUser() user: AuthUserType,
+        @Body(new ZodValidationPipe(SubmitBodyDto)) body: SubmitBody,
+    ) {
+        return this.submissionService.submit({
+            userId: user.id,
+            problemId: body.problemId,
+            workbookData: body.workbookData,
+            timeSpentSeconds: body.timeSpentSeconds,
+        });
+    }
 
-    app.get("/me", { preHandler: [app.authenticate] }, async (request) => {
-        const query = PaginationQueryDto.parse(request.query);
-        const rows = await submissionService.findByUser(
-            app.db,
-            request.userId,
+    @Get("me")
+    findMine(
+        @AuthUser() user: AuthUserType,
+        @Query(new ZodValidationPipe(PaginationQueryDto)) query: PaginationQuery,
+    ) {
+        return this.submissionService.findByUser(
+            user.id,
             query.page,
             query.limit,
         );
-        return { success: true, data: rows };
-    });
+    }
 
-    app.get(
-        "/problem/:problemId/stats",
-        { preHandler: [app.authenticate] },
-        async (request, reply) => {
-            if (request.userRole !== "admin") {
-                return reply.status(403).send({
-                    success: false,
-                    error: "Forbidden",
-                    code: "FORBIDDEN",
-                });
-            }
-            const { problemId } = request.params as { problemId: string };
-            const stats = await submissionService.getProblemStats(
-                app.db,
-                problemId,
-            );
-            return { success: true, data: stats };
-        },
-    );
-};
+    @Get("problem/:problemId/stats")
+    @UseGuards(AdminGuard)
+    getProblemStats(@Param("problemId") problemId: string) {
+        return this.submissionService.getProblemStats(problemId);
+    }
+
+    @Get(":id")
+    async findById(@Param("id") id: string, @AuthUser() user: AuthUserType) {
+        const row = await this.submissionService.findById(id);
+        if (!row) {
+            throw new NotFoundException({
+                error: "Not found",
+                code: "NOT_FOUND",
+            });
+        }
+        this.submissionService.assertCanRead(row, user);
+        return row;
+    }
+}

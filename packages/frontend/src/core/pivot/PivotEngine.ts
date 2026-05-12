@@ -15,6 +15,10 @@ interface PivotData {
     grandTotal?: number | null;
 }
 
+type PivotRecord = Record<string, CellValue>;
+type PivotGroup = PivotRecord[] | PivotGroupMap;
+type PivotGroupMap = Map<string, PivotGroup>;
+
 export class PivotEngine {
     calculate(
         def: PivotDefinition,
@@ -326,28 +330,23 @@ export class PivotEngine {
         return result;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private _groupBy(
-        records: Record<string, CellValue>[],
-        fields: PivotField[],
-    ): Map<string, any> {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const result = new Map<string, any>();
+    private _groupBy(records: PivotRecord[], fields: PivotField[]): PivotGroupMap {
+        const result: PivotGroupMap = new Map();
         const [first, ...rest] = fields;
         if (!first) return result;
 
         for (const r of records) {
             const key = String(r[first.fieldName] ?? "");
             if (!result.has(key)) result.set(key, []);
-            (result.get(key) as Record<string, CellValue>[]).push(r);
+            const group = result.get(key);
+            if (Array.isArray(group)) group.push(r);
         }
 
         if (rest.length > 0) {
             for (const [key, group] of result.entries()) {
-                result.set(
-                    key,
-                    this._groupBy(group as Record<string, CellValue>[], rest),
-                );
+                if (Array.isArray(group)) {
+                    result.set(key, this._groupBy(group, rest));
+                }
             }
         }
 

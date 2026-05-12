@@ -1,171 +1,127 @@
 import { z } from "zod";
-import type { FastifyPluginAsync } from "fastify";
+import {
+    Body,
+    Controller,
+    Delete,
+    Get,
+    Header,
+    NotFoundException,
+    Param,
+    Patch,
+    Post,
+    Put,
+    Query,
+    UseGuards,
+} from "@nestjs/common";
 import { ProblemBodyDto, GetProblemsQueryDto } from "../dto/problem.dto.js";
-import { problemService } from "../service/problem.service.js";
+import type { GetProblemsQuery, ProblemBody } from "../dto/problem.dto.js";
+import { ProblemService } from "../service/problem.service.js";
+import {
+    AdminGuard,
+    AuthUser,
+    JwtAuthGuard,
+    OptionalJwtAuthGuard,
+    type AuthUser as AuthUserType,
+} from "../../../global/security/index.js";
+import { ZodValidationPipe } from "../../../global/common/index.js";
 
-export const problemController: FastifyPluginAsync = async (app) => {
-    // 문제 목록 조회 (공개 접근 가능, 로그인 시 추가 필터)
-    app.get("/", async (request) => {
-        const query = GetProblemsQueryDto.parse(request.query);
+const ReviewBodyDto = z.object({
+    verdict: z.enum(["published", "rejected"]),
+    reviewNote: z.string().optional(),
+});
 
-        let isAdmin = false;
-        let userId: string | undefined;
-        try {
-            const payload = await request.jwtVerify<{
-                sub: string;
-                role: string;
-            }>();
-            isAdmin = payload.role === "admin";
-            userId = payload.sub;
-        } catch {
-            /* public access */
-        }
+type ReviewBody = z.infer<typeof ReviewBodyDto>;
 
-        const { rows, total } = await problemService.findAll(app.db, query, {
-            isAdmin,
-            userId,
+@Controller("api/problems")
+export class ProblemController {
+    constructor(private readonly problemService: ProblemService) {}
+
+    @Get()
+    @UseGuards(OptionalJwtAuthGuard)
+    async findAll(
+        @Query(new ZodValidationPipe(GetProblemsQueryDto))
+        query: GetProblemsQuery,
+        @AuthUser() user?: AuthUserType,
+    ) {
+        const { rows, total } = await this.problemService.findAll(query, {
+            isAdmin: user?.role === "admin",
+            userId: user?.id,
         });
         return { success: true, data: rows, total, page: query.page };
-    });
+    }
 
-    // 문제 상세 조회
-    app.get("/:id", async (request, reply) => {
-        const { id } = request.params as { id: string };
-
-        let requestUserId: string | undefined;
-        try {
-            const payload = await request.jwtVerify<{
-                sub: string;
-                role: string;
-            }>();
-            requestUserId = payload.sub;
-        } catch {
-            /* public */
-        }
-
-        const result = await problemService.findById(app.db, id, requestUserId);
+    @Get(":id")
+    @UseGuards(OptionalJwtAuthGuard)
+    async findById(@Param("id") id: string, @AuthUser() user?: AuthUserType) {
+        const result = await this.problemService.findById(id, user?.id);
         if (!result) {
-            return reply
-                .status(404)
-                .send({ success: false, error: "Not found", code: "NOT_FOUND" });
+            throw new NotFoundException({
+                error: "Not found",
+                code: "NOT_FOUND",
+            });
         }
-        return { success: true, data: result };
-    });
+        return result;
+    }
 
-    // 템플릿 xlsx 다운로드
-    app.get("/:id/template-download", async (request, reply) => {
-        const { id } = request.params as { id: string };
-        const result = await problemService.getTemplateXlsx(app.db, id);
+    @Get(":id/template-download")
+    @Header(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    async downloadTemplate(@Param("id") id: string) {
+        const result = await this.problemService.getTemplateXlsx(id);
         if (!result) {
-            return reply.status(404).send({
-                success: false,
+            throw new NotFoundException({
                 error: "Template not found",
                 code: "NOT_FOUND",
             });
         }
-        const filename = encodeURIComponent(`${result.title}.xlsx`);
-        return reply
-            .header(
-                "Content-Type",
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            )
-            .header(
-                "Content-Disposition",
-                `attachment; filename*=UTF-8''${filename}`,
-            )
-            .send(result.buffer);
-    });
+        return result.buffer;
+    }
 
-    // 문제 생성 (admin: official/published, 일반: community/draft)
-    app.post(
-        "/",
-        { preHandler: [app.authenticate] },
-        async (request, reply) => {
-            const body = ProblemBodyDto.parse(request.body);
-            const row = await problemService.create(
-                app.db,
-                body,
-                request.userId,
-                request.userRole,
-            );
-            return reply.status(201).send({ success: true, data: row });
-        },
-    );
+    @Post()
+    @UseGuards(JwtAuthGuard)
+    create(
+        @Body(new ZodValidationPipe(ProblemBodyDto)) body: ProblemBody,
+        @AuthUser() user: AuthUserType,
+    ) {
+        return this.problemService.create(body, user.id, user.role);
+    }
 
-    // 문제 수정 (본인 또는 admin)
-    app.put(
-        "/:id",
-        { preHandler: [app.authenticate] },
-        async (request, reply) => {
-            const { id } = request.params as { id: string };
-            const body = ProblemBodyDto.partial().parse(request.body);
-            const row = await problemService.update(
-                app.db,
-                id,
-                body,
-                request.userId,
-                request.userRole,
-            );
-            return { success: true, data: row };
-        },
-    );
+    @Put(":id")
+    @UseGuards(JwtAuthGuard)
+    update(
+        @Param("id") id: string,
+        @Body(new ZodValidationPipe(ProblemBodyDto.partial()))
+        body: Partial<ProblemBody>,
+        @AuthUser() user: AuthUserType,
+    ) {
+        return this.problemService.update(id, body, user.id, user.role);
+    }
 
-    // 문제 삭제 (본인 또는 admin)
-    app.delete(
-        "/:id",
-        { preHandler: [app.authenticate] },
-        async (request, reply) => {
-            const { id } = request.params as { id: string };
-            await problemService.delete(
-                app.db,
-                id,
-                request.userId,
-                request.userRole,
-            );
-            return { success: true, data: null };
-        },
-    );
+    @Delete(":id")
+    @UseGuards(JwtAuthGuard)
+    async delete(@Param("id") id: string, @AuthUser() user: AuthUserType) {
+        await this.problemService.delete(id, user.id, user.role);
+        return null;
+    }
 
-    // 일반 사용자 → 검토 요청 (draft → pending_review)
-    app.post(
-        "/:id/submit-review",
-        { preHandler: [app.authenticate] },
-        async (request, reply) => {
-            const { id } = request.params as { id: string };
-            const row = await problemService.submitForReview(
-                app.db,
-                id,
-                request.userId,
-            );
-            return { success: true, data: row };
-        },
-    );
+    @Post(":id/submit-review")
+    @UseGuards(JwtAuthGuard)
+    submitForReview(@Param("id") id: string, @AuthUser() user: AuthUserType) {
+        return this.problemService.submitForReview(id, user.id);
+    }
 
-    // admin → 검토 결과 처리 (pending_review → published | rejected)
-    app.patch(
-        "/:id/review",
-        { preHandler: [app.authenticate] },
-        async (request, reply) => {
-            if (request.userRole !== "admin") {
-                return reply
-                    .status(403)
-                    .send({ success: false, error: "Forbidden", code: "FORBIDDEN" });
-            }
-            const { id } = request.params as { id: string };
-            const { verdict, reviewNote } = z
-                .object({
-                    verdict: z.enum(["published", "rejected"]),
-                    reviewNote: z.string().optional(),
-                })
-                .parse(request.body);
-
-            const row = await problemService.reviewProblem(
-                app.db,
-                id,
-                verdict,
-                reviewNote,
-            );
-            return { success: true, data: row };
-        },
-    );
-};
+    @Patch(":id/review")
+    @UseGuards(JwtAuthGuard, AdminGuard)
+    review(
+        @Param("id") id: string,
+        @Body(new ZodValidationPipe(ReviewBodyDto)) body: ReviewBody,
+    ) {
+        return this.problemService.reviewProblem(
+            id,
+            body.verdict,
+            body.reviewNote,
+        );
+    }
+}

@@ -13,13 +13,17 @@ export default defineConfig({
         },
     },
     build: {
-        target: 'es2022',
+        target: "es2022",
         rollupOptions: {
             output: {
-                manualChunks: {
-                    'react-vendor': ['react', 'react-dom'],
-                    'zustand': ['zustand'],
-                    'router': ['react-router-dom'],
+                manualChunks(id) {
+                    if (!id.includes("node_modules")) return undefined;
+                    if (id.includes("/react/") || id.includes("/react-dom/")) {
+                        return "react-vendor";
+                    }
+                    if (id.includes("/zustand/")) return "zustand";
+                    if (id.includes("/react-router-dom/")) return "router";
+                    return undefined;
                 },
             },
         },

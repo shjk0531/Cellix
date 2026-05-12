@@ -2,3 +2,8 @@ packages:
   - "packages/*"
   - "packages/formula-engine/pkg"
   - "packages/formula-engine/pkg-node"
+allowBuilds:
+  '@nestjs/core': false
+  '@swc/core': false
+  bcrypt: false
+  esbuild: false

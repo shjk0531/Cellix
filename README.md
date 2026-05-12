@@ -1,1026 +1,528 @@
-# CLAUDE.md — Cellix 개발 가이드
+# Cellix
 
-Claude Code가 이 프로젝트를 작업할 때 반드시 읽고 따라야 하는 기준 문서입니다.
-모든 세션 시작 시 이 파일을 먼저 읽고, 아래 규칙을 엄격히 준수하세요.
+Cellix는 스프레드시트 학습과 채점을 위한 모노레포 프로젝트입니다. 프론트엔드는 React + Canvas, 백엔드는 NestJS, 공통 타입은 TypeScript 패키지, 수식 계산 엔진은 Rust/WASM으로 구성되어 있습니다.
 
----
+## 기술 스택
 
-## 목차
+- 패키지 매니저: `pnpm` workspaces
+- 런타임: Node.js `>= 24.0.0`
+- 프론트엔드: React, Vite, Canvas, Zustand
+- 백엔드: NestJS, Drizzle ORM, PostgreSQL, Redis
+- 수식 엔진: Rust, wasm-pack, WebAssembly
+- 기본 포트: frontend `5173`, backend `3001`, PostgreSQL `5432`, Redis `6379`
 
-1. [프로젝트 핵심 정보](#1-프로젝트-핵심-정보)
-2. [모노레포 구조](#2-모노레포-구조)
-3. [절대 규칙 (MUST)](#3-절대-규칙-must)
-4. [패키지별 개발 규칙](#4-패키지별-개발-규칙)
-5. [타입 시스템](#5-타입-시스템)
-6. [Canvas 그리드 엔진 규칙](#6-canvas-그리드-엔진-규칙)
-7. [Rust/WASM 엔진 규칙](#7-rustwasm-엔진-규칙)
-8. [상태 관리 규칙](#8-상태-관리-규칙)
-9. [백엔드 규칙](#9-백엔드-규칙)
-10. [명명 규칙](#10-명명-규칙)
-11. [에러 처리 규칙](#11-에러-처리-규칙)
-12. [파일 참조 가이드](#12-파일-참조-가이드)
-13. [검증 체크리스트](#13-검증-체크리스트)
-14. [현재 개발 상태](#14-현재-개발-상태)
+## 저장소 구조
 
----
-
-## 1. 프로젝트 핵심 정보
-
-```
-프로젝트명:   cellix
-패키지 매니저: pnpm (workspaces)
-Node.js:      >= 20.0.0
-TypeScript:   5.x (strict mode)
-언어:         TypeScript (프론트/백), Rust (수식 엔진)
-```
-
-**패키지 이름 (package.json name 필드):**
-
-```
-@cellix/shared        # packages/shared
-@cellix/frontend      # packages/frontend
-@cellix/backend       # packages/backend
-formula-engine        # packages/formula-engine (Rust crate)
-```
-
-**포트 기본값:**
-
-```
-프론트엔드:  5173
-백엔드:     3001
-PostgreSQL: 5432
-Redis:      6379
-```
-
----
-
-## 2. 모노레포 구조
-
-```
+```text
 cellix/
 ├── packages/
-│   ├── shared/           # @cellix/shared — 공유 타입, 유틸
-│   ├── frontend/         # @cellix/frontend — React + Canvas
-│   ├── backend/          # @cellix/backend — Fastify API
-│   └── formula-engine/   # Rust/WASM 수식 계산 엔진
-├── infra/
-│   └── nginx/            # Nginx 설정 (프로덕션 전용)
-├── docker-compose.yml        # 개발용
-├── docker-compose.prod.yml   # 프로덕션용
-├── Makefile
-├── package.json              # 루트 (workspaces 설정)
+│   ├── shared/           # @cellix/shared: 공유 타입과 순수 유틸
+│   ├── frontend/         # @cellix/frontend: React + Canvas UI
+│   ├── backend/          # @cellix/backend: NestJS API 서버
+│   └── formula-engine/   # Rust/WASM 수식 엔진
+├── infra/nginx/          # 프로덕션 Nginx 설정
+├── docker-compose.yml    # 개발용 Docker Compose
+├── docker-compose.prod.yml
+├── package.json
 ├── pnpm-workspace.yaml
 ├── tsconfig.base.json
 ├── .env.example
-├── README.md
-└── CLAUDE.md                 # 이 파일
+└── .env.prod.example
 ```
 
-**패키지 의존 관계:**
+## 처음 clone했을 때 설정
 
-```
-frontend  ──depends──▶  shared
-backend   ──depends──▶  shared
-frontend  ──런타임────▶  formula-engine/pkg (WASM)
-```
+### 1. 필수 도구 설치
 
----
-
-## 3. 절대 규칙 (MUST)
-
-### 3-1. 작업 시작 전 파일 읽기
-
-모든 세션에서 작업 대상 파일을 **반드시** 먼저 읽은 후 수정하세요.
-지시문에 `[현재 프로젝트 파악 — 작업 시작 전 반드시 읽을 파일들]` 섹션이 있으면
-그 파일들을 전부 읽고 나서 코드를 작성하세요.
+다음 도구가 필요합니다.
 
 ```bash
-# 세션 시작 시 항상 확인할 것
-cat packages/shared/src/types/cell.ts
-cat packages/shared/src/types/sheet.ts
+node --version   # 24 이상 권장
+pnpm --version   # 9 이상
+docker --version
+docker compose version
+rustc --version
+cargo --version
+wasm-pack --version
 ```
 
-### 3-2. 타입 공유 — shared 패키지 최우선
-
-- 두 패키지 이상에서 사용하는 타입은 **반드시** `packages/shared/src/types/` 에 정의
-- 절대로 각 패키지 내부에 중복 타입을 만들지 마세요
-- `@cellix/shared` import 경로를 사용하세요
-
-```typescript
-// ✅ 올바름
-import type { CellData, CellStyle } from "@cellix/shared";
-
-// ❌ 금지
-import type { CellData } from "../../shared/src/types/cell";
-```
-
-### 3-3. DOM으로 스프레드시트 셀 렌더링 금지
-
-스프레드시트 그리드 셀은 **Canvas에서만** 렌더링합니다.
-React 컴포넌트(`<div>`, `<table>`, `<span>` 등)로 셀을 직접 렌더링하는 코드를 작성하지 마세요.
-
-```typescript
-// ✅ 올바름 — Canvas에 그리기
-ctx.fillText(cellValue, x + 4, y + h / 2)
-
-// ❌ 금지 — DOM으로 셀 렌더링
-return <div className="cell">{cellValue}</div>
-```
-
-### 3-4. pnpm만 사용
-
-패키지 설치는 반드시 `pnpm`을 사용합니다. `npm install` 또는 `yarn` 사용 금지.
+`pnpm`이 없다면 Corepack으로 활성화합니다.
 
 ```bash
-# ✅ 올바름
-pnpm add zustand
-pnpm --filter @cellix/frontend add echarts
-
-# ❌ 금지
-npm install zustand
+corepack enable
+corepack prepare pnpm@latest --activate
 ```
 
-### 3-5. 환경 변수는 env.ts를 통해서만
-
-백엔드에서 `process.env.xxx` 직접 접근 금지.
-반드시 `packages/backend/src/config/env.ts`의 `env` 객체를 통해 접근하세요.
-
-```typescript
-// ✅ 올바름
-import { env } from "../config/env";
-const port = env.PORT;
-
-// ❌ 금지
-const port = process.env.PORT;
-```
-
-### 3-6. Map 타입 JSON 직렬화
-
-`WorkbookData`, `SheetData`의 `Map` 필드는 `JSON.stringify`로 직렬화되지 않습니다.
-API 전송 시 반드시 `packages/shared/src/utils/workbook-serializer.ts`의 변환 함수를 사용하세요.
-
-```typescript
-// ✅ 올바름
-import { serializeWorkbook, deserializeWorkbook } from "@cellix/shared";
-const json = serializeWorkbook(workbookData);
-
-// ❌ 금지 (Map이 {}로 직렬화됨)
-const json = JSON.stringify(workbookData);
-```
-
-### 3-7. WASM 빌드 후 테스트
-
-`packages/formula-engine/src/` 의 Rust 코드를 수정한 경우,
-반드시 다음 순서로 검증하세요:
+`wasm-pack`이 없다면 설치합니다.
 
 ```bash
-cd packages/formula-engine
-cargo test            # 1. 단위 테스트
-wasm-pack build --target web --out-dir pkg --dev  # 2. WASM 빌드
+cargo install wasm-pack
 ```
 
-빌드 에러가 있으면 해결 후 다음 단계로 넘어가세요.
-
----
-
-## 4. 패키지별 개발 규칙
-
-### 4-1. packages/shared
-
-- **순수 타입과 순수 유틸만** — 외부 의존성(React, Fastify 등) 절대 import 금지
-- 새 타입 추가 시 `src/types/index.ts`에서 반드시 export
-- `Map` 관련 직렬화 유틸은 `src/utils/workbook-serializer.ts`에
-
-**파일별 역할:**
-
-```
-types/cell.ts       — CellData, CellStyle, CellAddress, CellRange, MergeInfo
-types/sheet.ts      — SheetData, WorkbookData, ColumnMeta, RowMeta
-types/table.ts      — TableDefinition, TableColumn, TableStyleName
-types/formula.ts    — FormulaToken, ParsedFormula
-types/exam.ts       — ExamProblem, SubmissionResult, GradingRule
-types/api.ts        — ApiResponse<T>
-utils/index.ts      — assert 등 기본 유틸
-utils/workbook-serializer.ts — Map ↔ JSON 변환
-```
-
-### 4-2. packages/formula-engine (Rust)
-
-- `src/lib.rs` — WASM 바인딩만. 비즈니스 로직 없음
-- `src/parser/` — 순수 파싱. IO, 상태 없음
-- `src/evaluator/` — 순수 계산. `EvalContext` trait을 통해서만 셀 데이터 접근
-- `src/engine/` — 상태 보유. `Workbook`, `DependencyGraph`, `Engine`
-- JS와의 모든 데이터 교환은 **JSON 문자열**로 직렬화 (`wasm_bindgen`이 복잡한 타입 미지원)
-- `#[wasm_bindgen]` 함수는 `pub fn`, 파라미터는 `&str` 또는 원시 타입만
-- 에러는 패닉 대신 `Result<_, String>` 로 처리 (WASM에서 패닉 = 크래시)
-
-```rust
-// ✅ 올바름
-#[wasm_bindgen]
-pub fn set_cell(&mut self, sheet_id: &str, row: u32, col: u32, data_json: &str) -> String {
-    let data: JsCellData = serde_json::from_str(data_json)
-        .unwrap_or_default();
-    let changed = self.inner.set_cell(sheet_id, row, col, data);
-    serde_json::to_string(&changed).unwrap_or_default()
-}
-
-// ❌ 금지 — 복잡한 타입을 직접 WASM 경계에 노출
-#[wasm_bindgen]
-pub fn set_cell(&mut self, data: JsCellData) -> Vec<ChangedCell> { ... }
-```
-
-### 4-3. packages/frontend
-
-**디렉토리 역할:**
-
-```
-core/renderer/    — Canvas 렌더링 로직만. React 없음
-core/viewport/    — 스크롤, 좌표 변환. React 없음
-core/selection/   — 선택 상태 관리. React 없음
-core/input/       — 키보드/마우스 처리. React 없음
-core/history/     — Undo/Redo, 클립보드. React 없음
-core/style/       — 셀 스타일 관리. React 없음
-core/table/       — 표(Ctrl+T) 관리. React 없음
-core/chart/       — 차트 정의/관리. React 없음
-core/pivot/       — 피벗 테이블 계산. React 없음
-core/analysis/    — 가상 분석 도구. React 없음
-core/data/        — 정렬/필터/유효성. React 없음
-core/formula/     — DirtyCellTracker. React 없음
-core/io/          — XLSX 가져오기/내보내기. React 없음
-workers/          — Web Worker 파일들
-components/       — React 컴포넌트 (Canvas 바깥 UI만)
-pages/            — React 페이지 컴포넌트
-store/            — Zustand 스토어
-api/              — API 클라이언트
-```
-
-**React 컴포넌트와 Canvas 엔진의 책임 분리:**
-
-```
-React 컴포넌트 담당:
-  - Toolbar, FormulaBar, SheetTabs (Canvas 바깥 UI)
-  - 다이얼로그, 모달, 드롭다운
-  - 페이지 라우팅
-  - 사용자 인증 UI
-
-Canvas 엔진 담당:
-  - 셀 렌더링 (격자선, 텍스트, 배경, 테두리)
-  - 선택 영역 하이라이트
-  - 필터 아이콘, 채우기 핸들
-  - 차트 오버레이 (ChartOverlay: Canvas 위 absolute div)
-```
-
-### 4-4. packages/backend
-
-**디렉토리 역할:**
-
-```
-config/env.ts      — Zod 환경변수 검증 (유일한 env 접근 포인트)
-db/schema.ts       — Drizzle 테이블 정의 (스키마 변경 시 migration 생성 필수)
-db/index.ts        — DB 연결 싱글톤
-plugins/           — Fastify 플러그인 (fastify-plugin으로 래핑)
-routes/            — 라우트 핸들러 (비즈니스 로직 최소화)
-services/          — 비즈니스 로직 (grading, auth 등)
-middleware/        — preHandler 함수들
-```
-
----
-
-## 5. 타입 시스템
-
-### 핵심 타입 정의 위치
-
-| 타입               | 파일                                |
-| ------------------ | ----------------------------------- |
-| `CellData`         | `@cellix/shared` → `types/cell.ts`  |
-| `CellStyle`        | `@cellix/shared` → `types/cell.ts`  |
-| `CellAddress`      | `@cellix/shared` → `types/cell.ts`  |
-| `CellRange`        | `@cellix/shared` → `types/cell.ts`  |
-| `CellValue`        | `@cellix/shared` → `types/cell.ts`  |
-| `SheetData`        | `@cellix/shared` → `types/sheet.ts` |
-| `WorkbookData`     | `@cellix/shared` → `types/sheet.ts` |
-| `TableDefinition`  | `@cellix/shared` → `types/table.ts` |
-| `ExamProblem`      | `@cellix/shared` → `types/exam.ts`  |
-| `SubmissionResult` | `@cellix/shared` → `types/exam.ts`  |
-| `ApiResponse<T>`   | `@cellix/shared` → `types/api.ts`   |
-
-### CellKey 형식
-
-셀을 Map의 키로 사용할 때 형식:
-
-```typescript
-// SheetData.cells의 키: "{row}:{col}" (0-based)
-const key: CellKey = `${row}:${col}`;
-
-// WorkbookStore의 cells Record 키: "{sheetId}:{row}:{col}"
-const key = `${sheetId}:${row}:${col}`;
-
-// WASM 엔진 ChangedCell의 키: (sheet_id, row, col) — 별도 필드
-```
-
-### CellValue 타입
-
-```typescript
-type CellValue = string | number | boolean | null;
-// null = 빈 셀
-// string으로 시작하는 수식은 formula 필드에, value는 계산 결과
-```
-
----
-
-## 6. Canvas 그리드 엔진 규칙
-
-### 렌더 루프 구조
-
-```typescript
-// GridCanvas.tsx의 renderLoop 구조
-const renderLoop = () => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    gridRenderer.draw(ctx); // 1. 배경 + 셀 + 격자선
-    selectionRenderer.markDirty();
-    selectionRenderer.drawSelections(ctx, selections, activeCell); // 2. 선택 영역
-    // 잘라내기 테두리 등 오버레이  // 3. 기타 오버레이
-
-    rafId = requestAnimationFrame(renderLoop);
-};
-```
-
-### ViewportManager 사용법
-
-```typescript
-// 셀 → 픽셀 (Canvas 좌표)
-const { x, y } = viewport.cellToPixel(row, col)
-
-// 픽셀 → 셀 (마우스 클릭 처리)
-const { row, col } = viewport.pixelToCell(mouseX, mouseY)
-
-// 보이는 범위 순회 (렌더링 루프에서)
-viewport.iterateRows((row, y, height) => { ... })
-viewport.iterateCols((col, x, width) => { ... })
-
-// 셀 크기
-const h = viewport.getRowHeight(row)
-const w = viewport.getColWidth(col)
-```
-
-### 성능 규칙
-
-- `iterateRows` / `iterateCols` 로 보이는 셀만 처리 — `getOffset`을 매 셀마다 호출하지 말 것
-- `requestAnimationFrame`에서만 Canvas draw 호출
-- `mousemove` 이벤트는 직접 처리 금지 — RAF로 쓰로틀링
-- dirty 플래그 패턴: 변경이 없으면 re-draw 건너뜀
-
-```typescript
-// ✅ 올바름 — RAF 쓰로틀링
-let pendingX = 0,
-    pendingY = 0,
-    rafId: number | null = null;
-canvas.addEventListener("mousemove", (e) => {
-    pendingX = e.offsetX;
-    pendingY = e.offsetY;
-    if (rafId !== null) return;
-    rafId = requestAnimationFrame(() => {
-        rafId = null;
-        processMouseMove(pendingX, pendingY);
-    });
-});
-
-// ❌ 금지 — mousemove마다 즉시 처리
-canvas.addEventListener("mousemove", (e) => {
-    processMouseMove(e.offsetX, e.offsetY);
-    draw();
-});
-```
-
-### SizeStore 사용
-
-행/열 크기는 `Uint16Array` 기반 `SizeStore`에 저장됩니다.
-
-```typescript
-// ✅ 올바름
-viewport.setRowHeight(row, 40); // 행 높이 설정
-viewport.setColWidth(col, 120); // 열 너비 설정
-
-// ❌ 금지 — SizeStore.data에 직접 접근
-viewport.rows.data[row] = 40;
-```
-
----
-
-## 7. Rust/WASM 엔진 규칙
-
-### 아키텍처
-
-```
-FormulaEngineClient (TypeScript, 메인 스레드)
-    ↓ postMessage (JSON)
-formula.worker.ts (Web Worker)
-    ↓ import
-formula_engine.js (wasm-bindgen 생성)
-    ↓ 호출
-formula_engine_bg.wasm (Rust 컴파일)
-```
-
-### FormulaEngineClient 사용
-
-```typescript
-import { formulaEngine } from "../workers";
-
-// 초기화 (앱 시작 시 1회)
-await formulaEngine.initialize();
-
-// 셀 설정 — 반환값: 재계산된 셀 목록
-const changed = await formulaEngine.setCell(sheetId, row, col, value, formula);
-
-// 배치 업데이트 (성능상 여러 셀을 한번에)
-const changed = await formulaEngine.batchSet([
-    { sheetId, row: 0, col: 0, value: 100 },
-    { sheetId, row: 1, col: 0, value: 200 },
-]);
-
-// 수식 참조 파싱 (색깔 하이라이트용)
-const refs = await formulaEngine.parseRefs("=SUM(A1:A10)+B5");
-// → ['A1:A10', 'B5']
-```
-
-### WASM CellVal 타입
-
-```typescript
-// Worker에서 반환되는 셀 값 타입
-interface CellValResult {
-    t: "n" | "s" | "b" | "e" | "nil";
-    // n=number, s=string, b=boolean, e=error("#DIV/0!" 등), nil=null
-    v?: number | string | boolean;
-}
-```
-
-### 구조적 참조
-
-표 생성 시 WASM 엔진에 반드시 등록해야 구조적 참조가 동작합니다:
-
-```typescript
-await formulaEngine.registerTable(
-    JSON.stringify({
-        id: table.id,
-        name: table.name,
-        sheet_id: table.sheetId,
-        start_row: table.range.start.row,
-        start_col: table.range.start.col,
-        end_row: table.range.end.row,
-        end_col: table.range.end.col,
-        has_header: table.showHeaderRow,
-        has_total: table.showTotalRow,
-        columns: table.columns.map((c) => c.name),
-    }),
-);
-```
-
----
-
-## 8. 상태 관리 규칙
-
-### Zustand 스토어 구조
-
-```
-useWorkbookStore — 워크북 데이터 (셀, 시트 목록, 계산값 캐시)
-useUIStore       — UI 상태 (선택, 편집 모드, 히스토리, 활성 셀 데이터)
-useAuthStore     — 인증 상태 (유저 정보, 토큰)
-```
-
-### 셀 데이터 흐름
-
-```
-사용자 입력
-    ↓
-InputManager._commitEdit()
-    ↓
-useWorkbookStore.setCell()  ← Zustand 즉시 업데이트 (동기)
-    ↓ (비동기, 백그라운드)
-formulaEngine.setCell()     ← WASM 엔진 업데이트
-    ↓ (onChanged 이벤트)
-useWorkbookStore.setCalculatedValues()  ← 계산값 캐시 업데이트
-    ↓
-GridRenderer.draw()         ← calculatedValues 우선 표시
-```
-
-### 스토어 셀렉터 사용
-
-```typescript
-// ✅ 올바름 — 필요한 상태만 구독
-const activeCell = useUIStore((state) => state.activeCell);
-const canUndo = useUIStore((state) => state.canUndo);
-
-// ❌ 성능 저하 — 전체 스토어 구독
-const store = useUIStore();
-```
-
-### Canvas 엔진과 스토어 연결 방법
-
-Canvas 엔진 클래스들은 React를 import하지 않습니다.
-`GridCanvas.tsx`에서 엔진 인스턴스의 이벤트를 구독하여 Zustand에 push합니다.
-
-```typescript
-// GridCanvas.tsx에서
-const unsubSelection = selection.subscribe((state: SelectionState) => {
-    useUIStore.getState().setSelectionState(state); // Zustand에 push
-});
-```
-
----
-
-## 9. 백엔드 규칙
-
-### 라우트 핸들러 구조
-
-```typescript
-// routes/*.routes.ts 패턴
-export const problemRoutes: FastifyPluginAsync = async (app) => {
-    app.get(
-        "/",
-        {
-            preHandler: [app.authenticate], // 인증 필요 시
-            schema: {
-                querystring: GetProblemsQuerySchema,
-                response: { 200: GetProblemsResponseSchema },
-            },
-        },
-        async (request, reply) => {
-            // 비즈니스 로직은 services/로 위임
-            const result = await problemService.getAll(request.query);
-            return { success: true, data: result };
-        },
-    );
-};
-```
-
-### API 응답 형식
-
-**성공:**
-
-```typescript
-{ success: true, data: T }
-// 또는 페이지네이션
-{ success: true, data: T[], total: number, page: number }
-```
-
-**실패:**
-
-```typescript
-{ success: false, error: string, code: string }
-// code: 'UNAUTHORIZED' | 'FORBIDDEN' | 'NOT_FOUND' | 'CONFLICT' |
-//       'VALIDATION_ERROR' | 'INTERNAL_ERROR'
-```
-
-### 채점 서비스 규칙
-
-```typescript
-// grading.service.ts
-// - HyperFormula는 백엔드에서만 사용 (프론트는 WASM)
-// - answerWorkbook은 절대로 API 응답에 포함시키지 말 것
-// - gradingConfig도 학생에게 노출 금지
-```
-
-### DB 스키마 변경 절차
+### 2. 저장소 clone
 
 ```bash
-# 1. schema.ts 수정
-# 2. 마이그레이션 파일 생성
-pnpm --filter @cellix/backend db:generate
-
-# 3. 마이그레이션 적용
-pnpm --filter @cellix/backend db:migrate
-
-# ❌ 금지 — 마이그레이션 없이 스키마만 바꾸는 것
+git clone <repository-url> cellix
+cd cellix
 ```
 
----
+### 3. 환경 변수 파일 생성
 
-## 10. 명명 규칙
-
-### TypeScript
-
-```typescript
-// 클래스: PascalCase
-class ViewportManager {}
-class SelectionManager {}
-
-// 인터페이스: PascalCase (I 접두사 없음)
-interface CellData {}
-interface SelectionRange {}
-
-// 타입 별칭: PascalCase
-type CellValue = string | number | boolean | null
-type CellKey = string
-
-// 함수/변수: camelCase
-const viewportManager = new ViewportManager()
-function cellToPixel(row: number, col: number): PixelPoint {}
-
-// 상수: UPPER_SNAKE_CASE
-const MAX_ROWS = 1_048_576
-const DEFAULT_ROW_HEIGHT = 20
-const RANGE_COLORS = ['#4B87FF', '#00CC66', ...]
-
-// 파일명: PascalCase (클래스), camelCase (유틸/훅)
-// ViewportManager.ts, useWorkbookStore.ts, cellUtils.ts
-
-// Zustand 스토어 훅: use + PascalCase + Store
-const useWorkbookStore = create<WorkbookState>(...)
-```
-
-### Rust
-
-```rust
-// 구조체/열거형: PascalCase
-pub struct FormulaEngine {}
-pub enum CellVal {}
-
-// 함수/메서드: snake_case
-pub fn set_cell(&mut self, ...) {}
-fn parse_col_name(&self, s: &str) -> Option<u32> {}
-
-// 상수: UPPER_SNAKE_CASE
-const MAX_ITERATIONS: u32 = 1000;
-
-// WASM 노출 함수: snake_case (JS 측에서 camelCase로 접근)
-#[wasm_bindgen]
-pub fn set_cell(...) {}  // JS: engine.set_cell()
-```
-
-### CSS / 스타일
-
-인라인 스타일 객체를 사용합니다 (CSS 파일 최소화).
-
-```typescript
-// ✅ 올바름
-const style: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    borderBottom: "1px solid #dadce0",
-};
-
-// ❌ 지양 (별도 CSS 파일)
-// .toolbar { display: flex; }
-```
-
----
-
-## 11. 에러 처리 규칙
-
-### TypeScript (프론트)
-
-```typescript
-// 비동기 작업은 try-catch
-try {
-  const changed = await formulaEngine.setCell(...)
-} catch (err) {
-  console.error('[FormulaEngine] setCell failed:', err)
-  // UI에 에러 표시 (토스트 등)
-}
-
-// Worker 타임아웃 처리됨 (FormulaEngineClient 내부)
-// — 10초 초과 시 자동으로 reject
-```
-
-### TypeScript (백엔드)
-
-```typescript
-// Fastify 에러 핸들러 (app.ts에서 설정)
-app.setErrorHandler((error, request, reply) => {
-    if (error instanceof ZodError) {
-        return reply.status(422).send({
-            success: false,
-            error: error.errors[0].message,
-            code: "VALIDATION_ERROR",
-        });
-    }
-    app.log.error(error);
-    return reply.status(500).send({
-        success: false,
-        error: "Internal server error",
-        code: "INTERNAL_ERROR",
-    });
-});
-```
-
-### Rust
-
-```rust
-// ✅ 올바름 — Result로 에러 전파
-fn parse_number(s: &str) -> Result<f64, String> {
-    s.parse::<f64>().map_err(|e| format!("숫자 파싱 실패: {}", e))
-}
-
-// WASM 경계에서 에러 문자열 반환
-#[wasm_bindgen]
-pub fn set_cell(...) -> String {
-    match self.inner.set_cell(...) {
-        Ok(changed) => serde_json::to_string(&changed).unwrap_or_default(),
-        Err(e) => format!("{{\"error\":\"{}\"}}", e),
-    }
-}
-
-// ❌ 금지 — WASM에서 패닉 사용
-fn parse_number(s: &str) -> f64 {
-    s.parse().expect("파싱 실패")  // WASM에서 패닉 = 크래시
-}
-```
-
----
-
-## 12. 파일 참조 가이드
-
-새 기능 작업 시 참조해야 할 핵심 파일들입니다.
-
-### Canvas 렌더링 관련
-
-```
-packages/frontend/src/core/renderer/GridRenderer.ts    — 셀 그리기 로직
-packages/frontend/src/core/viewport/ViewportManager.ts — 좌표 변환, 가상 스크롤
-packages/frontend/src/core/viewport/SizeStore.ts       — 행/열 크기 저장
-packages/frontend/src/components/GridCanvas.tsx        — 엔진 통합 포인트
-```
-
-### 선택/입력 관련
-
-```
-packages/frontend/src/core/selection/SelectionManager.ts   — 선택 상태
-packages/frontend/src/core/selection/SelectionRenderer.ts  — 선택 그리기
-packages/frontend/src/core/input/InputManager.ts           — 키/마우스 처리
-packages/frontend/src/core/history/HistoryManager.ts       — Undo/Redo
-packages/frontend/src/core/history/ClipboardManager.ts     — 복사/붙여넣기
-```
-
-### 수식 엔진 관련
-
-```
-packages/formula-engine/src/lib.rs                — WASM 바인딩
-packages/formula-engine/src/parser/mod.rs         — 파서
-packages/formula-engine/src/parser/tokenizer.rs   — 토크나이저
-packages/formula-engine/src/parser/ast.rs         — AST 정의
-packages/formula-engine/src/evaluator/mod.rs      — 평가기
-packages/formula-engine/src/engine/mod.rs         — 메인 엔진
-packages/frontend/src/workers/formula.worker.ts   — Web Worker
-packages/frontend/src/workers/FormulaEngineClient.ts — TS 클라이언트
-```
-
-### 스타일/서식 관련
-
-```
-packages/shared/src/types/cell.ts                      — CellStyle 타입
-packages/frontend/src/core/style/StyleManager.ts       — 스타일 관리
-packages/frontend/src/core/style/NumberFormatter.ts    — 숫자 포맷
-packages/frontend/src/core/conditional/               — 조건부 서식
-```
-
-### 표(Table) 관련
-
-```
-packages/shared/src/types/table.ts                     — TableDefinition 타입
-packages/frontend/src/core/table/TableManager.ts       — 표 CRUD
-packages/frontend/src/core/table/TableStyleRenderer.ts — 표 스타일 렌더링
-packages/formula-engine/src/engine/table.rs            — 구조적 참조 해석
-```
-
-### 상태 관리 관련
-
-```
-packages/frontend/src/store/useWorkbookStore.ts  — 워크북 데이터
-packages/frontend/src/store/useUIStore.ts        — UI 상태
-packages/frontend/src/store/useAuthStore.ts      — 인증 상태
-```
-
-### 백엔드 관련
-
-```
-packages/backend/src/db/schema.ts              — DB 테이블 정의
-packages/backend/src/config/env.ts             — 환경변수
-packages/backend/src/app.ts                    — Fastify 앱 설정
-packages/backend/src/services/grading.service.ts — 채점 로직
-packages/shared/src/types/exam.ts              — ExamProblem, SubmissionResult
-```
-
-### 공유 타입 관련
-
-```
-packages/shared/src/types/cell.ts     — 셀 관련 핵심 타입
-packages/shared/src/types/sheet.ts    — 시트/워크북 타입
-packages/shared/src/types/exam.ts     — 문제/제출 타입
-packages/shared/src/types/api.ts      — API 응답 타입
-packages/shared/src/utils/workbook-serializer.ts — Map 직렬화
-```
-
----
-
-## 13. 검증 체크리스트
-
-각 명령어 완료 후 다음 항목을 확인하세요.
-
-### TypeScript 검증
+개발 환경은 `.env.example`을 복사해서 시작합니다.
 
 ```bash
-# 타입 에러 확인 (에러 없어야 함)
-pnpm typecheck
-
-# 또는 패키지별
-pnpm --filter @cellix/shared typecheck
-pnpm --filter @cellix/frontend typecheck
-pnpm --filter @cellix/backend typecheck
+cp .env.example .env
 ```
 
-### Rust 검증
+Windows PowerShell에서는 다음 명령을 사용할 수 있습니다.
 
-```bash
-cd packages/formula-engine
-
-# 단위 테스트 실행
-cargo test 2>&1 | tail -20
-
-# WASM 빌드 (에러 없어야 함)
-wasm-pack build --target web --out-dir pkg --dev 2>&1 | tail -20
+```powershell
+Copy-Item .env.example .env
 ```
 
-### 런타임 검증
+개발 기본값은 다음 흐름을 가정합니다.
+
+```env
+NODE_ENV=development
+BACKEND_PORT=3001
+FRONTEND_PORT=5173
+HOST=0.0.0.0
+CORS_ORIGIN=http://localhost:5173
+DATABASE_URL=postgresql://cellix:cellix_secret@localhost:5432/cellix
+REDIS_URL=redis://localhost:6379
+VITE_API_BASE_URL=http://localhost:3001
+```
+
+JWT를 명시적으로 고정하려면 `.env`에 최소 32자 이상의 값을 추가합니다.
+
+```env
+JWT_SECRET=change_me_to_a_long_random_string_at_least_32_chars
+JWT_EXPIRES_IN=7d
+```
+
+### 4. 의존성 설치
 
 ```bash
-# 개발 서버 실행
-docker compose up -d postgres redis
+pnpm approve-builds
+pnpm install
+```
+
+### 5. WASM 엔진 빌드
+
+프론트엔드 브라우저용 `pkg`와 백엔드 Node.js용 `pkg-node`가 모두 필요합니다.
+
+```bash
 pnpm build:wasm:dev
-pnpm dev
-
-# 브라우저에서 확인할 항목:
-# 1. http://localhost:5173 접속 → 스프레드시트 표시
-# 2. 셀 클릭 → 선택 하이라이트
-# 3. 숫자 입력 → Enter → 다음 셀 이동 + 값 표시
-# 4. =1+2 입력 → Enter → 3 표시
-# 5. A1=5 입력, B1=A1*2 입력 → B1에 10 표시
-# 6. A1 값 변경 → B1 자동 업데이트
-# 7. 콘솔 에러 없음
 ```
 
-### API 검증
+릴리스 빌드는 나중에 배포 단계에서 다음 명령을 사용합니다.
 
 ```bash
-# 백엔드 헬스 체크
-curl http://localhost:3001/api/health
+pnpm build:wasm
+```
 
-# 회원가입
+### 6. 데이터베이스와 Redis 시작
+
+로컬에서 앱 프로세스를 직접 실행할 때도 PostgreSQL과 Redis는 Docker로 띄우는 것이 가장 쉽습니다.
+
+```bash
+docker compose up -d postgres redis
+```
+
+상태 확인:
+
+```bash
+docker compose ps
+```
+
+### 7. DB 마이그레이션 적용
+
+```bash
+pnpm --filter @cellix/backend db:migrate
+```
+
+이제 개발 서버를 실행할 준비가 끝났습니다.
+
+## 개발 환경에서 실행하기
+
+개발 환경은 두 가지 방식 중 하나를 선택하면 됩니다.
+
+## 방식 A: 로컬 Node 프로세스 + Docker DB
+
+가장 일반적인 개발 방식입니다. 소스 변경에 대한 피드백이 빠릅니다.
+
+### 1. 인프라 실행
+
+```bash
+docker compose up -d postgres redis
+```
+
+### 2. WASM 빌드
+
+Rust 수식 엔진을 처음 받았거나 Rust 코드를 수정했다면 다시 빌드합니다.
+
+```bash
+pnpm build:wasm:dev
+```
+
+### 3. 전체 개발 서버 실행
+
+```bash
+pnpm dev
+```
+
+이 명령은 workspace의 `dev` 스크립트를 병렬로 실행합니다.
+
+- `@cellix/shared`: TypeScript watch build
+- `@cellix/frontend`: Vite dev server
+- `@cellix/backend`: NestJS 서버를 `tsx watch`로 실행
+
+접속 주소:
+
+- 프론트엔드: http://localhost:5173
+- 백엔드 헬스 체크: http://localhost:3001/api/health
+
+### 4. 패키지별로 따로 실행하기
+
+터미널을 나눠서 실행하고 싶다면 다음처럼 실행합니다.
+
+```bash
+pnpm --filter @cellix/shared dev
+pnpm --filter @cellix/backend dev
+pnpm --filter @cellix/frontend dev
+```
+
+### 5. API 확인
+
+```bash
+curl http://localhost:3001/api/health
+```
+
+회원가입 예시:
+
+```bash
 curl -X POST http://localhost:3001/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{"email":"test@test.com","password":"testpassword1","name":"테스터"}'
+```
 
-# 로그인
+로그인 예시:
+
+```bash
 curl -X POST http://localhost:3001/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"test@test.com","password":"testpassword1"}'
 ```
 
----
+## 방식 B: Docker Compose로 개발 서버 전체 실행
 
-## 14. 현재 개발 상태
-
-### 완료된 Phase
-
-| Phase   | 내용                             | 상태    |
-| ------- | -------------------------------- | ------- |
-| Phase 1 | 모노레포 설정, 공유 타입, Docker | ✅ 완료 |
-| Phase 2 | Canvas 그리드 엔진, React 쉘     | ✅ 완료 |
-
-**Phase 2 완료 목록:**
-
-- `ViewportManager` — 가상 스크롤, 좌표 변환, `SizeStore` (Uint16Array)
-- `SelectionManager` — 단일/범위/다중 선택, Ctrl+클릭, 수식 참조 색깔
-- `SelectionRenderer` — Canvas 선택 영역 그리기
-- `InputManager` — IME 오버레이, 편집 모드, 드래그 채우기, RAF 쓰로틀링
-- `GridRenderer` — Canvas 격자선, 셀 텍스트 렌더링
-- `HistoryManager` — Command 패턴, Undo/Redo, 배치 커맨드
-- `ClipboardManager` — Ctrl+C/X/V, TSV 직렬화, 선택하여 붙여넣기
-- `SpreadsheetShell`, `GridCanvas`, `Toolbar`, `FormulaBar`, `SheetTabs`
-- `useWorkbookStore`, `useUIStore`
-- Fastify 기본 서버 (`/api/health`)
-
-### 진행 예정 Phase
-
-| Phase   | 내용                               | 상태      |
-| ------- | ---------------------------------- | --------- |
-| Phase 3 | Rust/WASM 수식 엔진                | 🔲 미완료 |
-| Phase 4 | 셀 서식, 정렬, 필터, 유효성 검사   | 🔲 미완료 |
-| Phase 5 | 표(Ctrl+T), 구조적 참조, 가상 분석 | 🔲 미완료 |
-| Phase 6 | 차트(ECharts), 피벗 테이블         | 🔲 미완료 |
-| Phase 7 | 백엔드 API, DB 스키마, 인증        | 🔲 미완료 |
-| Phase 8 | 채점 엔진, 문제 풀이 UI            | 🔲 미완료 |
-| Phase 9 | 성능 최적화, Nginx, 프로덕션 배포  | 🔲 미완료 |
-
-### 알려진 버그 및 TODO
-
-1. **[수정 필요]** `packages/frontend/vite.config.ts` — proxy 타겟이 `localhost:3000`으로 잘못 설정됨 → `localhost:3001`로 수정 필요
-2. **[TODO]** `InputManager._commitEdit()` — `// TODO: cell data store 연동` 주석 → Phase 3-5에서 완성
-3. **[TODO]** `Toolbar.tsx` — 모든 버튼이 껍데기만 있음 → Phase 4-1에서 실제 기능 연결
-4. **[TODO]** `GridRenderer.ts` — 스타일/조건부 서식 미적용 → Phase 4에서 통합
-
----
-
-## 부록 A: 자주 실수하는 패턴
-
-### A-1. Map 직렬화 실수
-
-```typescript
-// ❌ 실수 — Map이 {} 로 직렬화됨
-const body = JSON.stringify(workbookData);
-await fetch("/api/submissions", { body });
-
-// ✅ 올바름
-import { serializeWorkbook } from "@cellix/shared";
-const body = JSON.stringify(serializeWorkbook(workbookData));
-```
-
-### A-2. WASM 초기화 순서 실수
-
-```typescript
-// ❌ 실수 — 초기화 전에 사용
-formulaEngine.setCell(...)  // Error: Engine not initialized
-
-// ✅ 올바름 — 앱 시작 시 먼저 초기화
-await formulaEngine.initialize()
-await formulaEngine.addSheet(firstSheetId, 'Sheet1')
-// 이후 setCell 사용 가능
-```
-
-### A-3. React 컴포넌트에서 Canvas 직접 접근 실수
-
-```typescript
-// ❌ 실수 — 매 렌더마다 새 인스턴스 생성
-function GridCanvas() {
-  const renderer = new GridRenderer(...)  // 매 렌더마다 생성됨!
-  return <canvas />
-}
-
-// ✅ 올바름 — useEffect + useRef
-function GridCanvas() {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  useEffect(() => {
-    const renderer = new GridRenderer(...)  // 마운트 시 1회만
-    return () => renderer.destroy()
-  }, [])
-  return <canvas ref={canvasRef} />
-}
-```
-
-### A-4. 행/열 인덱스 혼동
-
-```typescript
-// Cellix의 모든 인덱스는 0-based
-// row=0, col=0 → A1 셀
-// row=0, col=1 → B1 셀
-
-// CellKey 형식: "{row}:{col}" (0-based)
-const key = `${row}:${col}`; // ✅ "0:0" for A1
-
-// 사용자에게 표시할 때만 +1
-const displayRow = row + 1; // ✅ "1" for row=0
-const displayCol = colToLetter(col); // ✅ "A" for col=0
-```
-
-### A-5. Rust에서 0-based vs 1-based
-
-```rust
-// 파서에서 셀 참조는 0-based로 변환하여 저장
-// "A1" → CellRef { row: 0, col: 0 }
-// "B2" → CellRef { row: 1, col: 1 }
-
-fn parse_row_num(s: &str) -> Option<u32> {
-    s.parse::<u32>().ok().map(|n| n - 1)  // ✅ 1-based 입력 → 0-based 저장
-}
-```
-
----
-
-## 부록 B: 유용한 개발 명령어
+로컬에 Node/Rust 도구를 덜 설치하고 컨테이너 중심으로 돌리고 싶을 때 사용합니다.
 
 ```bash
-# 전체 개발 서버 (WASM 빌드 포함)
-pnpm build:wasm:dev && pnpm dev
+cp .env.example .env
+docker compose up --build
+```
 
-# 특정 패키지만 타입 체크
+백그라운드 실행:
+
+```bash
+docker compose up -d --build
+```
+
+로그 확인:
+
+```bash
+docker compose logs -f backend
+docker compose logs -f frontend
+```
+
+종료:
+
+```bash
+docker compose down
+```
+
+DB 볼륨까지 삭제하고 완전히 초기화:
+
+```bash
+docker compose down -v
+```
+
+## 자주 쓰는 개발 명령어
+
+```bash
+# 전체 타입 체크
+pnpm typecheck
+
+# 패키지별 타입 체크
+pnpm --filter @cellix/shared typecheck
 pnpm --filter @cellix/frontend typecheck
+pnpm --filter @cellix/backend typecheck
 
-# WASM 테스트 + 빌드 (Rust 변경 후)
-cd packages/formula-engine && cargo test && wasm-pack build --target web --out-dir pkg --dev
+# 전체 빌드
+pnpm build
 
-# DB 초기화 (개발 중 스키마 망가진 경우)
-docker compose down -v && docker compose up -d postgres redis
+# WASM 개발 빌드
+pnpm build:wasm:dev
+
+# WASM 릴리스 빌드
+pnpm build:wasm
+
+# 백엔드 DB 마이그레이션 생성
+pnpm --filter @cellix/backend db:generate
+
+# 백엔드 DB 마이그레이션 적용
 pnpm --filter @cellix/backend db:migrate
 
-# 의존성 전체 재설치
-pnpm clean && pnpm install
-
-# 특정 패키지에 의존성 추가
-pnpm --filter @cellix/frontend add react-router-dom
-pnpm --filter @cellix/frontend add -D @types/node
-
-# Drizzle Studio (DB 시각화)
-docker compose up -d postgres
+# Drizzle Studio
 pnpm --filter @cellix/backend db:studio
-# → http://local.drizzle.studio 에서 확인
+```
+
+Rust 수식 엔진을 수정했다면 다음 순서로 확인합니다.
+
+```bash
+cd packages/formula-engine
+cargo test
+wasm-pack build --target web --out-dir pkg --dev
+wasm-pack build --target nodejs --out-dir pkg-node --dev
+```
+
+## 백엔드 구조
+
+백엔드는 NestJS 프로젝트입니다. Fastify/Express/FastAPI 호환 레이어 없이 NestJS 모듈, 컨트롤러, 서비스, 레포지토리 중심으로 구성합니다.
+
+```text
+packages/backend/src/
+├── app.module.ts
+├── server.ts
+├── domain/
+│   ├── auth/
+│   │   ├── controller/
+│   │   ├── dto/
+│   │   ├── repository/
+│   │   ├── service/
+│   │   └── auth.module.ts
+│   ├── problem/
+│   ├── submission/
+│   └── user/
+└── global/
+    ├── common/      # 응답 인터셉터, Zod 검증 파이프 등
+    ├── config/      # env 검증과 전역 config
+    ├── db/          # Drizzle DB 연결, schema, migrations
+    ├── entity/
+    ├── exception/   # 전역 exception filter
+    ├── redis/
+    ├── security/    # JWT guard, Admin guard, auth decorator
+    └── websocket/
+```
+
+백엔드에서 환경 변수는 `packages/backend/src/global/config/env.ts`를 통해 검증됩니다. 런타임 코드에서 `process.env`를 직접 읽지 말고, 검증된 `env` 객체나 전역 config provider를 사용합니다.
+
+## 배포 준비
+
+### 1. 프로덕션 환경 변수 생성
+
+```bash
+cp .env.prod.example .env.prod
+```
+
+PowerShell:
+
+```powershell
+Copy-Item .env.prod.example .env.prod
+```
+
+반드시 수정해야 하는 값:
+
+```env
+NODE_ENV=production
+HOST=0.0.0.0
+CORS_ORIGIN=https://your-domain.com
+JWT_SECRET=change_me_to_a_long_random_string_at_least_32_chars
+JWT_EXPIRES_IN=7d
+POSTGRES_DB=cellix
+POSTGRES_USER=cellix
+POSTGRES_PASSWORD=strong_password_here
+REDIS_PASSWORD=strong_redis_password_here
+```
+
+주의할 점:
+
+- `JWT_SECRET`은 최소 32자 이상으로 설정합니다.
+- `POSTGRES_PASSWORD`, `REDIS_PASSWORD`는 개발 기본값을 사용하지 않습니다.
+- 실제 도메인을 쓴다면 `CORS_ORIGIN`을 프론트엔드 도메인으로 바꿉니다.
+- HTTPS 종료를 Nginx 앞단의 로드밸런서나 별도 reverse proxy에서 처리할 경우, 해당 구성에 맞게 Nginx 설정을 조정합니다.
+
+### 2. 프로덕션 이미지 빌드 및 실행
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+```
+
+서비스 상태 확인:
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.prod ps
+```
+
+로그 확인:
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.prod logs -f backend
+docker compose -f docker-compose.prod.yml --env-file .env.prod logs -f nginx
+```
+
+기본 프로덕션 구성:
+
+- `postgres`: 내부 네트워크 전용 PostgreSQL
+- `redis`: password가 설정된 내부 Redis
+- `backend`: NestJS API 서버, 내부 네트워크에서 `backend:3001`로 접근
+- `frontend`: Vite 빌드 결과를 담은 Nginx 정적 파일 컨테이너
+- `nginx`: 외부 `80` 포트 공개, `/api/*`는 백엔드로 프록시, 나머지는 SPA 정적 파일 제공
+
+### 3. 마이그레이션 적용
+
+현재 프로덕션 Compose에는 별도 migrate 서비스가 없습니다. 또한 프로덕션 런타임 이미지는 `--prod` 의존성만 설치하므로, `drizzle-kit`이 들어 있는 개발 의존성을 컨테이너 안에서 바로 사용할 수 없습니다.
+
+따라서 운영 DB 마이그레이션은 다음 중 한 가지 방식으로 처리합니다.
+
+권장 방식은 배포 호스트나 CI에서 의존성을 설치한 뒤 운영 DB에 접근 가능한 네트워크에서 실행하는 것입니다.
+
+```bash
+pnpm install --frozen-lockfile
+DATABASE_URL=postgresql://<user>:<password>@<host>:5432/<db> \
+  pnpm --filter @cellix/backend db:migrate
+```
+
+Windows PowerShell:
+
+```powershell
+$env:DATABASE_URL="postgresql://<user>:<password>@<host>:5432/<db>"
+pnpm --filter @cellix/backend db:migrate
+```
+
+운영 DB가 Docker 내부 네트워크에서만 접근 가능하다면, `docker-compose.prod.yml`에 별도 `migrate` 서비스를 추가해서 같은 네트워크에서 실행하도록 구성하는 방식을 권장합니다. 첫 배포라면 서비스 시작 전 또는 직후 한 번 실행하고, DB 스키마 변경이 포함된 배포에서도 새 이미지 배포 시 함께 실행합니다.
+
+### 4. 배포 확인
+
+```bash
+curl http://localhost/api/health
+```
+
+서버 도메인을 연결했다면 다음처럼 확인합니다.
+
+```bash
+curl https://your-domain.com/api/health
+```
+
+브라우저에서는 다음을 확인합니다.
+
+- 첫 화면이 로드되는지
+- 스프레드시트 Canvas가 표시되는지
+- 셀 클릭과 입력이 되는지
+- 로그인/회원가입 API가 동작하는지
+- 브라우저 콘솔에 WASM MIME 또는 CORS 에러가 없는지
+
+## 수동 프로덕션 빌드
+
+Docker 없이 빌드 결과를 직접 만들고 싶다면 다음 순서로 진행합니다.
+
+```bash
+pnpm install --frozen-lockfile
+pnpm build:wasm
+pnpm --filter @cellix/shared build
+pnpm --filter @cellix/backend build
+pnpm --filter @cellix/frontend build
+```
+
+빌드 산출물:
+
+- 백엔드: `packages/backend/dist`
+- 프론트엔드: `packages/frontend/dist`
+- 브라우저 WASM: `packages/formula-engine/pkg`
+- Node.js WASM: `packages/formula-engine/pkg-node`
+
+백엔드 직접 실행:
+
+```bash
+NODE_ENV=production pnpm --filter @cellix/backend start
+```
+
+Windows PowerShell:
+
+```powershell
+$env:NODE_ENV="production"
+pnpm --filter @cellix/backend start
+```
+
+프론트엔드 `dist`는 Nginx, Caddy, S3+CDN 등 정적 호스팅에 배포할 수 있습니다. 단, API 프록시와 WASM MIME 타입 `application/wasm` 설정이 필요합니다.
+
+## 문제 해결
+
+### `pnpm`을 찾을 수 없는 경우
+
+```bash
+corepack enable
+corepack prepare pnpm@latest --activate
+```
+
+그래도 안 되면 Node.js 24 설치 상태와 PATH를 확인합니다.
+
+### WASM 파일을 찾을 수 없는 경우
+
+프론트엔드 또는 백엔드가 `packages/formula-engine/pkg` 또는 `pkg-node`를 찾지 못한다면 WASM을 다시 빌드합니다.
+
+```bash
+pnpm build:wasm:dev
+```
+
+### DB 연결 실패
+
+개발 환경에서는 PostgreSQL 컨테이너가 떠 있는지 확인합니다.
+
+```bash
+docker compose ps postgres
+docker compose logs postgres
+```
+
+`.env`의 `DATABASE_URL`이 로컬 실행 방식과 맞는지도 확인합니다.
+
+- 로컬 Node 실행: `postgresql://cellix:cellix_secret@localhost:5432/cellix`
+- Docker 내부 실행: `postgresql://cellix:cellix_secret@postgres:5432/cellix`
+
+### Redis 연결 실패
+
+```bash
+docker compose ps redis
+docker compose logs redis
+```
+
+로컬 Node 실행 시 `REDIS_URL=redis://localhost:6379`, Docker 내부 실행 시 `REDIS_URL=redis://redis:6379`를 사용합니다.
+
+### 개발 DB를 초기화하고 싶은 경우
+
+주의: 아래 명령은 개발 DB 데이터를 모두 삭제합니다.
+
+```bash
+docker compose down -v
+docker compose up -d postgres redis
+pnpm --filter @cellix/backend db:migrate
+```
+
+## 커밋 전 체크리스트
+
+```bash
+pnpm typecheck
+pnpm build:wasm:dev
+pnpm --filter @cellix/backend typecheck
+pnpm --filter @cellix/frontend typecheck
+```
+
+Rust 코드를 수정했다면 추가로:
+
+```bash
+cd packages/formula-engine
+cargo test
+wasm-pack build --target web --out-dir pkg --dev
+wasm-pack build --target nodejs --out-dir pkg-node --dev
 ```
