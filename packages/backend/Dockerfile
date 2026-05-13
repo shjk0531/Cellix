@@ -1,5 +1,5 @@
 # Stage 1: Rust/wasm-pack — pkg-node 빌드
-FROM rust:1.82-slim AS wasm-builder
+FROM rust:1.95-slim AS wasm-builder
 
 WORKDIR /build
 

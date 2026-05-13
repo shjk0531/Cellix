@@ -31,4 +31,4 @@ COPY tsconfig.base.json ./
 COPY --from=wasm-builder /app/packages/formula-engine/pkg ./packages/formula-engine/pkg
 
 EXPOSE 5173
-CMD ["pnpm", "--filter", "@cellix/frontend", "dev", "--", "--host"]
+CMD ["pnpm", "--filter", "@cellix/frontend", "exec", "vite", "--host", "0.0.0.0"]
