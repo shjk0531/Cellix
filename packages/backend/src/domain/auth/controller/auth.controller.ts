@@ -28,7 +28,9 @@ const COOKIE_NAME = "refreshToken";
 @Controller("api/auth")
 export class AuthController {
     constructor(
+        @Inject(AuthService)
         private readonly authService: AuthService,
+        @Inject(JwtService)
         private readonly jwtService: JwtService,
         @Inject(REDIS_TOKEN) private readonly redis: Redis,
     ) {}
@@ -36,9 +38,11 @@ export class AuthController {
     @Post("register")
     async register(
         @Body(new ZodValidationPipe(RegisterBodyDto)) body: RegisterBody,
+        @Res({ passthrough: true }) response: { setHeader: (name: string, value: string) => void },
     ) {
         const user = await this.authService.register(body);
-        return { user };
+        const accessToken = await this.issueRefreshSession(user, response);
+        return { accessToken, user };
     }
 
     @Post("login")
@@ -48,17 +52,7 @@ export class AuthController {
         @Res({ passthrough: true }) response: { setHeader: (name: string, value: string) => void },
     ) {
         const user = await this.authService.login(body);
-        const accessToken = await this.signAccessToken(user);
-        const refreshToken = crypto.randomUUID();
-        await this.redis.setex(
-            `refresh:${refreshToken}`,
-            REFRESH_TOKEN_EXPIRES_SEC,
-            user.id,
-        );
-        response.setHeader(
-            "Set-Cookie",
-            serializeCookie(COOKIE_NAME, refreshToken, REFRESH_TOKEN_EXPIRES_SEC),
-        );
+        const accessToken = await this.issueRefreshSession(user, response);
         return { accessToken, user };
     }
 
@@ -104,7 +98,7 @@ export class AuthController {
             serializeCookie(COOKIE_NAME, newRefreshToken, REFRESH_TOKEN_EXPIRES_SEC),
         );
 
-        const accessToken = await this.signAccessToken(user);
+        const accessToken = await this.issueRefreshSession(user, response);
         return { accessToken, user };
     }
 
@@ -137,5 +131,23 @@ export class AuthController {
             { sub: user.id, role: user.role },
             { expiresIn: ACCESS_TOKEN_EXPIRES },
         );
+    }
+
+    private async issueRefreshSession(
+        user: { id: string; role: string },
+        response: { setHeader: (name: string, value: string) => void },
+    ) {
+        const accessToken = await this.signAccessToken(user);
+        const refreshToken = crypto.randomUUID();
+        await this.redis.setex(
+            `refresh:${refreshToken}`,
+            REFRESH_TOKEN_EXPIRES_SEC,
+            user.id,
+        );
+        response.setHeader(
+            "Set-Cookie",
+            serializeCookie(COOKIE_NAME, refreshToken, REFRESH_TOKEN_EXPIRES_SEC),
+        );
+        return accessToken;
     }
 }

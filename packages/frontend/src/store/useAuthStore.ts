@@ -17,6 +17,8 @@ interface AuthState {
     checkAuth: () => Promise<void>;
 }
 
+let checkAuthPromise: Promise<void> | null = null;
+
 export const useAuthStore = create<AuthState>()((set) => ({
     user: null,
     isLoading: true,
@@ -27,6 +29,7 @@ export const useAuthStore = create<AuthState>()((set) => ({
             { email, password },
         );
         apiClient.setToken(data.accessToken);
+        apiClient.setRefreshSession(true);
         set({ user: data.user });
     },
 
@@ -36,6 +39,7 @@ export const useAuthStore = create<AuthState>()((set) => ({
             { email, password, name },
         );
         apiClient.setToken(data.accessToken);
+        apiClient.setRefreshSession(true);
         set({ user: data.user });
     },
 
@@ -46,21 +50,38 @@ export const useAuthStore = create<AuthState>()((set) => ({
             // ignore
         }
         apiClient.setToken(null);
+        apiClient.setRefreshSession(false);
         set({ user: null });
     },
 
     checkAuth: async () => {
-        set({ isLoading: true });
-        try {
-            const data = await apiClient.post<{
-                accessToken: string;
-                user: User;
-            }>("/api/auth/refresh");
-            apiClient.setToken(data.accessToken);
-            set({ user: data.user, isLoading: false });
-        } catch {
+        if (!apiClient.shouldCheckAuth()) {
             apiClient.setToken(null);
             set({ user: null, isLoading: false });
+            return;
         }
+
+        if (checkAuthPromise) return checkAuthPromise;
+
+        set({ isLoading: true });
+        checkAuthPromise = (async () => {
+            try {
+                const data = await apiClient.post<{
+                    accessToken: string;
+                    user: User;
+                }>("/api/auth/refresh");
+                apiClient.setToken(data.accessToken);
+                apiClient.setRefreshSession(true);
+                set({ user: data.user, isLoading: false });
+            } catch {
+                apiClient.setToken(null);
+                apiClient.setRefreshSession(false);
+                set({ user: null, isLoading: false });
+            } finally {
+                checkAuthPromise = null;
+            }
+        })();
+
+        return checkAuthPromise;
     },
 }));

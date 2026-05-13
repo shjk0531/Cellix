@@ -2,6 +2,7 @@ import {
     Body,
     Controller,
     Get,
+    Inject,
     NotFoundException,
     Patch,
     Query,
@@ -16,7 +17,10 @@ import { ZodValidationPipe } from "../../../global/common/index.js";
 @Controller("api/users")
 @UseGuards(JwtAuthGuard)
 export class UserController {
-    constructor(private readonly userService: UserService) {}
+    constructor(
+        @Inject(UserService)
+        private readonly userService: UserService,
+    ) {}
 
     @Get("me")
     async me(@AuthUser() authUser: AuthUserType) {

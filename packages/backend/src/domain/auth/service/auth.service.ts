@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, UnauthorizedException } from "@nestjs/common";
+import { ConflictException, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import bcrypt from "bcrypt";
 import { AuthRepository } from "../repository/auth.repository.js";
 
@@ -6,7 +6,10 @@ const SALT_ROUNDS = 10;
 
 @Injectable()
 export class AuthService {
-    constructor(private readonly authRepository: AuthRepository) {}
+    constructor(
+        @Inject(AuthRepository)
+        private readonly authRepository: AuthRepository,
+    ) {}
 
     async register(
         input: { email: string; password: string; name: string },

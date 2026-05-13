@@ -5,7 +5,11 @@
     "scripts": {
         "build:wasm": "cd packages/formula-engine && wasm-pack build --target web --out-dir pkg --release && wasm-pack build --target nodejs --out-dir pkg-node --release",
         "build:wasm:dev": "cd packages/formula-engine && wasm-pack build --target web --out-dir pkg --dev && wasm-pack build --target nodejs --out-dir pkg-node --dev",
-        "dev": "pnpm --parallel -r dev",
+        "dev": "docker compose up -d postgres redis && pnpm run build:wasm:dev && pnpm --filter @cellix/backend db:migrate && pnpm run dev:start",
+        "dev:start": "pnpm --parallel -r dev",
+        "prod": "node -e \"const fs=require('node:fs'); if (!fs.existsSync('.env.prod')) { console.error('.env.prod not found. Create it from .env.prod.example first.'); process.exit(1); }\" && docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build",
+        "prod:down": "docker compose -f docker-compose.prod.yml --env-file .env.prod down",
+        "prod:logs": "docker compose -f docker-compose.prod.yml --env-file .env.prod logs -f",
         "build": "pnpm build:wasm && pnpm -r build",
         "typecheck": "pnpm -r typecheck",
         "lint": "pnpm -r lint",

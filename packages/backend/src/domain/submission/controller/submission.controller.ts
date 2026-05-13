@@ -2,6 +2,7 @@ import {
     Body,
     Controller,
     Get,
+    Inject,
     NotFoundException,
     Param,
     Post,
@@ -22,7 +23,10 @@ import { ZodValidationPipe } from "../../../global/common/index.js";
 @Controller("api/submissions")
 @UseGuards(JwtAuthGuard)
 export class SubmissionController {
-    constructor(private readonly submissionService: SubmissionService) {}
+    constructor(
+        @Inject(SubmissionService)
+        private readonly submissionService: SubmissionService,
+    ) {}
 
     @Post()
     submit(

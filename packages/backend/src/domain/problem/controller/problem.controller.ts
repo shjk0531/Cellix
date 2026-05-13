@@ -5,6 +5,7 @@ import {
     Delete,
     Get,
     Header,
+    Inject,
     NotFoundException,
     Param,
     Patch,
@@ -34,7 +35,10 @@ type ReviewBody = z.infer<typeof ReviewBodyDto>;
 
 @Controller("api/problems")
 export class ProblemController {
-    constructor(private readonly problemService: ProblemService) {}
+    constructor(
+        @Inject(ProblemService)
+        private readonly problemService: ProblemService,
+    ) {}
 
     @Get()
     @UseGuards(OptionalJwtAuthGuard)

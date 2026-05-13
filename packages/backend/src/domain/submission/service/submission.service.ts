@@ -1,5 +1,6 @@
 import {
     ForbiddenException,
+    Inject,
     Injectable,
     NotFoundException,
 } from "@nestjs/common";
@@ -11,8 +12,11 @@ import { ProblemRepository } from "../../problem/repository/problem.repository.j
 @Injectable()
 export class SubmissionService {
     constructor(
+        @Inject(SubmissionRepository)
         private readonly submissionRepository: SubmissionRepository,
+        @Inject(GradingService)
         private readonly gradingService: GradingService,
+        @Inject(ProblemRepository)
         private readonly problemRepository: ProblemRepository,
     ) {}
 
