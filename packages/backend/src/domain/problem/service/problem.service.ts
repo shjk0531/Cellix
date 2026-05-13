@@ -1,5 +1,6 @@
 import {
     ForbiddenException,
+    Inject,
     Injectable,
     NotFoundException,
     BadRequestException,
@@ -46,7 +47,10 @@ function buildXlsxBuffer(data: SerializedWorkbookData): Buffer {
 
 @Injectable()
 export class ProblemService {
-    constructor(private readonly problemRepository: ProblemRepository) {}
+    constructor(
+        @Inject(ProblemRepository)
+        private readonly problemRepository: ProblemRepository,
+    ) {}
 
     async findAll(
         query: GetProblemsQuery,

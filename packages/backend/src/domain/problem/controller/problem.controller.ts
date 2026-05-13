@@ -51,7 +51,7 @@ export class ProblemController {
             isAdmin: user?.role === "admin",
             userId: user?.id,
         });
-        return { success: true, data: rows, total, page: query.page };
+        return { problems: rows, total, page: query.page };
     }
 
     @Get(":id")

@@ -453,7 +453,7 @@ export function MyProblemsPage() {
         setError("");
         problemApi
             .myList()
-            .then(({ data }) => setProblems(data))
+            .then(({ problems }) => setProblems(problems))
             .catch((e) => setError(e.message))
             .finally(() => setLoading(false));
     }, []);

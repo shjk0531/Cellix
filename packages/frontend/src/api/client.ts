@@ -6,6 +6,18 @@ const REFRESH_SESSION_KEY = "cellix.hasRefreshSession";
 let _accessToken: string | null = sessionStorage.getItem("accessToken");
 let _refreshPromise: Promise<string | null> | null = null;
 
+export class ApiClientError extends Error {
+    constructor(
+        message: string,
+        readonly code: string,
+        readonly status: number,
+        readonly response: ApiResponse<unknown>,
+    ) {
+        super(message);
+        this.name = "ApiClientError";
+    }
+}
+
 function setRefreshSession(value: boolean): void {
     if (value) localStorage.setItem(REFRESH_SESSION_KEY, "true");
     else localStorage.removeItem(REFRESH_SESSION_KEY);
@@ -49,7 +61,14 @@ async function request<T>(
     }
 
     const json = (await res.json()) as ApiResponse<T>;
-    if (!json.success) throw new Error(json.error ?? "Unknown error");
+    if (!json.success) {
+        throw new ApiClientError(
+            json.message || "Unknown error",
+            json.code || "UNKNOWN_ERROR",
+            res.status,
+            json,
+        );
+    }
     return json.data as T;
 }
 

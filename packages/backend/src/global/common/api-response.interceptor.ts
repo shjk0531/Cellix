@@ -5,6 +5,7 @@ import {
     NestInterceptor,
 } from "@nestjs/common";
 import { map, type Observable } from "rxjs";
+import { ApiResponse } from "./api-response.js";
 
 @Injectable()
 export class ApiResponseInterceptor implements NestInterceptor {
@@ -12,14 +13,10 @@ export class ApiResponseInterceptor implements NestInterceptor {
         return next.handle().pipe(
             map((value: unknown) => {
                 if (value instanceof Buffer) return value;
-                if (
-                    typeof value === "object" &&
-                    value !== null &&
-                    "success" in value
-                ) {
+                if (ApiResponse.isApiResponse(value)) {
                     return value;
                 }
-                return { success: true, data: value };
+                return ApiResponse.success(value);
             }),
         );
     }

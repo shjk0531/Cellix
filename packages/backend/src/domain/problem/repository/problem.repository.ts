@@ -7,6 +7,7 @@ import {
     count,
     desc,
     asc,
+    inArray,
 } from "drizzle-orm";
 import { DB_TOKEN } from "../../../global/db/db.module.js";
 import type { DB } from "../../../global/db/index.js";
@@ -14,6 +15,33 @@ import { problems, userProgress, bookmarks } from "../../../global/db/schema.js"
 import type { GetProblemsQuery, ProblemBody } from "../dto/problem.dto.js";
 
 type SortField = "newest" | "vote" | "view" | "acceptance" | "difficulty";
+
+const publicProblemColumns = {
+    id: problems.id,
+    title: problems.title,
+    description: problems.description,
+    difficulty: problems.difficulty,
+    level: problems.level,
+    type: problems.type,
+    sourceType: problems.sourceType,
+    category: problems.category,
+    stepLevel: problems.stepLevel,
+    status: problems.status,
+    score: problems.score,
+    timeLimit: problems.timeLimit,
+    estimatedMinutes: problems.estimatedMinutes,
+    hints: problems.hints,
+    tags: problems.tags,
+    voteUp: problems.voteUp,
+    voteDown: problems.voteDown,
+    viewCount: problems.viewCount,
+    acceptanceRate: problems.acceptanceRate,
+    solveCount: problems.solveCount,
+    isPublished: problems.isPublished,
+    createdBy: problems.createdBy,
+    createdAt: problems.createdAt,
+    updatedAt: problems.updatedAt,
+};
 
 function buildOrderBy(sortBy: SortField) {
     switch (sortBy) {
@@ -88,49 +116,28 @@ export class ProblemRepository {
             const ids = bookmarkedIds.map((b) => b.problemId);
             if (ids.length === 0) return { rows: [], total: 0 };
 
-            const rows = await this.db
-                .select()
+            const bookmarkedWhere = where
+                ? and(where, inArray(problems.id, ids))
+                : inArray(problems.id, ids);
+
+            const [{ total: bookmarkedTotal }] = await this.db
+                .select({ total: count() })
                 .from(problems)
-                .where(
-                    and(
-                        where,
-                        sql`${problems.id} = ANY(ARRAY[${ids}]::uuid[])`,
-                    ),
-                )
+                .where(bookmarkedWhere);
+
+            const rows = await this.db
+                .select(publicProblemColumns)
+                .from(problems)
+                .where(bookmarkedWhere)
                 .orderBy(...orderBy)
                 .limit(query.limit)
                 .offset(offset);
 
-            return { rows, total };
+            return { rows, total: bookmarkedTotal };
         }
 
         const rows = await this.db
-            .select({
-                id: problems.id,
-                title: problems.title,
-                description: problems.description,
-                difficulty: problems.difficulty,
-                level: problems.level,
-                type: problems.type,
-                sourceType: problems.sourceType,
-                category: problems.category,
-                stepLevel: problems.stepLevel,
-                status: problems.status,
-                score: problems.score,
-                timeLimit: problems.timeLimit,
-                estimatedMinutes: problems.estimatedMinutes,
-                hints: problems.hints,
-                tags: problems.tags,
-                voteUp: problems.voteUp,
-                voteDown: problems.voteDown,
-                viewCount: problems.viewCount,
-                acceptanceRate: problems.acceptanceRate,
-                solveCount: problems.solveCount,
-                isPublished: problems.isPublished,
-                createdBy: problems.createdBy,
-                createdAt: problems.createdAt,
-                updatedAt: problems.updatedAt,
-            })
+            .select(publicProblemColumns)
             .from(problems)
             .where(where)
             .orderBy(...orderBy)

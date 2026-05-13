@@ -27,7 +27,7 @@ export interface GetProblemsParams {
 }
 
 export interface ProblemsListResponse {
-    data: ProblemSummary[];
+    problems: ProblemSummary[];
     total: number;
     page: number;
 }
@@ -94,18 +94,18 @@ export const problemApi = {
         return apiClient.get(`/api/problems${buildQueryString(params)}`);
     },
 
-    get(id: string): Promise<{ data: ProblemSummary }> {
+    get(id: string): Promise<ProblemSummary> {
         return apiClient.get(`/api/problems/${id}`);
     },
 
-    create(payload: CreateProblemPayload): Promise<{ data: ProblemSummary }> {
+    create(payload: CreateProblemPayload): Promise<ProblemSummary> {
         return apiClient.post("/api/problems", payload);
     },
 
     update(
         id: string,
         payload: Partial<CreateProblemPayload>,
-    ): Promise<{ data: ProblemSummary }> {
+    ): Promise<ProblemSummary> {
         return apiClient.put(`/api/problems/${id}`, payload);
     },
 
@@ -114,7 +114,7 @@ export const problemApi = {
     },
 
     // draft → pending_review (일반 사용자 검토 요청)
-    submitForReview(id: string): Promise<{ data: ProblemSummary }> {
+    submitForReview(id: string): Promise<ProblemSummary> {
         return apiClient.post(`/api/problems/${id}/submit-review`);
     },
 
@@ -123,7 +123,7 @@ export const problemApi = {
         id: string,
         verdict: "published" | "rejected",
         reviewNote?: string,
-    ): Promise<{ data: ProblemSummary }> {
+    ): Promise<ProblemSummary> {
         return apiClient.patch(`/api/problems/${id}/review`, {
             verdict,
             reviewNote,

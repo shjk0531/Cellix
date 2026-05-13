@@ -752,7 +752,7 @@ export function ProblemCreatePage() {
     // 수정 모드: 기존 문제 데이터 불러오기
     useEffect(() => {
         if (!editId) return;
-        problemApi.get(editId).then(({ data }) => {
+        problemApi.get(editId).then((data) => {
             setStep1({
                 title: data.title,
                 description: data.description,
