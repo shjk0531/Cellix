@@ -8,6 +8,20 @@
         "rootDir": "./src",
         "composite": true,
         "paths": {
+            "@app/*": ["./src/app/*"],
+            "@routes": ["./src/routes/index.ts"],
+            "@routes/*": ["./src/routes/*"],
+            "@features/*": ["./src/features/*"],
+            "@entities/*": ["./src/entities/*"],
+            "@shared/*": ["./src/shared/*"],
+            "@shared/api": ["./src/shared/api/index.ts"],
+            "@features/problems/api": ["./src/features/problems/api/index.ts"],
+            "@features/spreadsheet/ui": ["./src/features/spreadsheet/ui/index.ts"],
+            "@features/spreadsheet/model": ["./src/features/spreadsheet/model/index.ts"],
+            "@features/formula-engine/workers": ["./src/features/formula-engine/workers/index.ts"],
+            "@features/exam/ui": ["./src/features/exam/ui/index.ts"],
+            "@entities/auth/model": ["./src/entities/auth/model/index.ts"],
+            "@entities/theme/model": ["./src/entities/theme/model/index.ts"],
             "@cellix/shared": ["../shared/src/index.ts"]
         }
     },

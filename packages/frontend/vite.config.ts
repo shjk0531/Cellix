@@ -9,6 +9,11 @@ export default defineConfig({
     plugins: [react(), wasm(), topLevelAwait(), tailwindcss()],
     resolve: {
         alias: {
+            "@app": path.resolve(__dirname, "src/app"),
+            "@routes": path.resolve(__dirname, "src/routes"),
+            "@features": path.resolve(__dirname, "src/features"),
+            "@entities": path.resolve(__dirname, "src/entities"),
+            "@shared": path.resolve(__dirname, "src/shared"),
             "@cellix/shared": path.resolve(__dirname, "../shared/src/index.ts"),
         },
     },

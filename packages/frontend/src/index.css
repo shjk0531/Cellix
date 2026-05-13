@@ -1,6 +1,6 @@
 @import "tailwindcss";
-@import "./styles/tokens.css";
-@import "./styles/grid.css";
+@import "./shared/styles/tokens.css";
+@import "./shared/styles/grid.css";
 
 @keyframes cellix-spin {
     to {
