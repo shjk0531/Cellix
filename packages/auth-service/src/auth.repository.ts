@@ -1,8 +1,8 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { eq } from "drizzle-orm";
-import { DB_TOKEN } from "../../../global/db/db.module.js";
-import type { DB } from "../../../global/db/index.js";
-import { users } from "../../../global/db/schema.js";
+import { DB_TOKEN } from "./db/db.module.js";
+import type { DB } from "./db/index.js";
+import { users } from "./db/schema.js";
 
 @Injectable()
 export class AuthRepository {
@@ -12,9 +12,7 @@ export class AuthRepository {
         return this.db.query.users.findFirst({ where: eq(users.email, email) });
     }
 
-    async create(
-        input: { email: string; passwordHash: string; name: string },
-    ) {
+    async create(input: { email: string; passwordHash: string; name: string }) {
         const [user] = await this.db.insert(users).values(input).returning({
             id: users.id,
             email: users.email,

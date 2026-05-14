@@ -1,6 +1,6 @@
 import { ConflictException, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import bcrypt from "bcrypt";
-import { AuthRepository } from "../repository/auth.repository.js";
+import { AuthRepository } from "./auth.repository.js";
 
 const SALT_ROUNDS = 10;
 
@@ -11,9 +11,7 @@ export class AuthService {
         private readonly authRepository: AuthRepository,
     ) {}
 
-    async register(
-        input: { email: string; password: string; name: string },
-    ) {
+    async register(input: { email: string; password: string; name: string }) {
         const existing = await this.authRepository.findByEmail(input.email);
         if (existing) {
             throw new ConflictException({

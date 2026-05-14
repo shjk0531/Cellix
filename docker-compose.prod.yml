@@ -46,15 +46,45 @@ services:
       NODE_ENV: production
       DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
       REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379"
+      GRADING_SERVICE_URL: "http://grading-service:3003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      grading-service:
+        condition: service_started
+    networks: [cellix-net]
+    # 외부 포트 미노출 — nginx 통해서만 접근
+
+  # ── 프론트엔드 (정적 파일 빌드 포함) ─────────────────────────────────────
+  auth-service:
+    build:
+      context: .
+      dockerfile: packages/auth-service/Dockerfile.prod
+    restart: always
+    env_file: .env.prod
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     networks: [cellix-net]
-    # 외부 포트 미노출 — nginx 통해서만 접근
 
-  # ── 프론트엔드 (정적 파일 빌드 포함) ─────────────────────────────────────
+  grading-service:
+    build:
+      context: .
+      dockerfile: packages/grading-service/Dockerfile.prod
+    restart: always
+    env_file: .env.prod
+    environment:
+      NODE_ENV: production
+    networks: [cellix-net]
+
   frontend:
     build:
       context: .
@@ -77,6 +107,7 @@ services:
     depends_on:
       - frontend
       - backend
+      - auth-service
     networks: [cellix-net]
 
 volumes:

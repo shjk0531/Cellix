@@ -1,6 +1,8 @@
 import type { ApiResponse } from "@cellix/shared";
 
-const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3001";
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
+const AUTH_API_BASE =
+    import.meta.env.VITE_AUTH_API_BASE_URL ?? "";
 const REFRESH_SESSION_KEY = "cellix.hasRefreshSession";
 
 let _accessToken: string | null = sessionStorage.getItem("accessToken");
@@ -31,13 +33,17 @@ function canAutoRefresh(path: string): boolean {
     return !path.startsWith("/api/auth/");
 }
 
+function baseFor(path: string): string {
+    return path.startsWith("/api/auth/") ? AUTH_API_BASE : API_BASE;
+}
+
 async function _doFetch(
     method: string,
     path: string,
     body: unknown,
     token: string | null,
 ): Promise<Response> {
-    return fetch(`${BASE}${path}`, {
+    return fetch(`${baseFor(path)}${path}`, {
         method,
         headers: {
             "Content-Type": "application/json",
@@ -77,7 +83,7 @@ async function refreshAccessToken(): Promise<string | null> {
 
     _refreshPromise = (async () => {
         try {
-            const refreshRes = await fetch(`${BASE}/api/auth/refresh`, {
+            const refreshRes = await fetch(`${AUTH_API_BASE}/api/auth/refresh`, {
                 method: "POST",
                 credentials: "include",
             });

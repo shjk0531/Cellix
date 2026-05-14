@@ -1,0 +1,20 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
+        "outDir": "./dist",
+        "rootDir": "./src",
+        "composite": true,
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
+        "types": ["node"],
+        "paths": {
+            "@cellix/shared": ["../shared/src/index.ts"],
+            "formula-engine-node": ["../formula-engine/pkg-node/formula_engine.d.ts"]
+        }
+    },
+    "include": ["src"],
+    "exclude": ["node_modules", "dist"],
+    "references": [{ "path": "../shared" }]
+}

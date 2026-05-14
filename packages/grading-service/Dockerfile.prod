@@ -1,0 +1,56 @@
+FROM rust:1.95-slim AS wasm-builder
+
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+RUN curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+WORKDIR /workspace
+COPY packages/formula-engine/Cargo.toml ./packages/formula-engine/
+COPY packages/formula-engine/Cargo.lock ./packages/formula-engine/
+COPY packages/formula-engine/src/ ./packages/formula-engine/src/
+
+RUN cd packages/formula-engine && \
+    wasm-pack build --target nodejs --out-dir pkg-node --release
+
+FROM node:24-alpine AS builder
+
+RUN corepack enable pnpm && corepack prepare pnpm@11.1.2 --activate
+
+WORKDIR /workspace
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.base.json ./
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/grading-service/package.json ./packages/grading-service/
+COPY packages/backend/package.json ./packages/backend/
+COPY packages/auth-service/package.json ./packages/auth-service/
+COPY --from=wasm-builder /workspace/packages/formula-engine/pkg-node/package.json ./packages/formula-engine/pkg-node/
+
+RUN pnpm install --frozen-lockfile
+
+COPY packages/shared/ ./packages/shared/
+COPY packages/grading-service/ ./packages/grading-service/
+COPY packages/backend/package.json ./packages/backend/
+COPY packages/auth-service/package.json ./packages/auth-service/
+COPY --from=wasm-builder /workspace/packages/formula-engine/pkg-node/ ./packages/formula-engine/pkg-node/
+
+RUN pnpm --filter @cellix/shared build && \
+    pnpm --filter @cellix/grading-service build
+
+FROM node:24-alpine AS runtime
+
+RUN apk upgrade --no-cache && corepack enable pnpm && corepack prepare pnpm@11.1.2 --activate
+
+WORKDIR /workspace
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/grading-service/package.json ./packages/grading-service/
+COPY packages/backend/package.json ./packages/backend/
+COPY packages/auth-service/package.json ./packages/auth-service/
+COPY --from=wasm-builder /workspace/packages/formula-engine/pkg-node/package.json ./packages/formula-engine/pkg-node/
+
+RUN pnpm install --frozen-lockfile --prod
+
+COPY --from=builder /workspace/packages/shared/dist ./packages/shared/dist
+COPY --from=builder /workspace/packages/grading-service/dist ./packages/grading-service/dist
+COPY --from=wasm-builder /workspace/packages/formula-engine/pkg-node/ ./packages/formula-engine/pkg-node/
+
+EXPOSE 3003
+CMD ["node", "--enable-source-maps", "packages/grading-service/dist/server.js"]

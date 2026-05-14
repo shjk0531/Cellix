@@ -5,17 +5,17 @@ import {
     NotFoundException,
 } from "@nestjs/common";
 import { SubmissionRepository } from "../repository/submission.repository.js";
-import { GradingService } from "./grading.service.js";
 import type { GradingConfig } from "../entity/submission.entity.js";
 import { ProblemRepository } from "../../problem/repository/problem.repository.js";
+import { GradingClientService } from "./grading-client.service.js";
 
 @Injectable()
 export class SubmissionService {
     constructor(
         @Inject(SubmissionRepository)
         private readonly submissionRepository: SubmissionRepository,
-        @Inject(GradingService)
-        private readonly gradingService: GradingService,
+        @Inject(GradingClientService)
+        private readonly gradingService: GradingClientService,
         @Inject(ProblemRepository)
         private readonly problemRepository: ProblemRepository,
     ) {}

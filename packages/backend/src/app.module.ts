@@ -1,5 +1,4 @@
 import { Controller, Get, Module } from "@nestjs/common";
-import { AuthModule } from "./domain/auth/index.js";
 import { ProblemModule } from "./domain/problem/index.js";
 import { SubmissionModule } from "./domain/submission/index.js";
 import { UserModule } from "./domain/user/index.js";
@@ -17,7 +16,6 @@ class HealthController {
 @Module({
     imports: [
         GlobalModule,
-        AuthModule,
         ProblemModule,
         SubmissionModule,
         UserModule,

@@ -40,6 +40,10 @@ export default defineConfig({
             allow: ["../.."],
         },
         proxy: {
+            "/api/auth": {
+                target: "http://auth-service:3002",
+                changeOrigin: true,
+            },
             "/api": {
                 target: "http://backend:3001",
                 changeOrigin: true,

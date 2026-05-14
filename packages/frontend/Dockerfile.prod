@@ -17,7 +17,7 @@ RUN cd packages/formula-engine && \
 # ── Stage 2: Node.js 프론트엔드 빌드 ─────────────────────────────────────────
 FROM node:24-alpine AS frontend-builder
 
-RUN npm install -g pnpm
+RUN corepack enable pnpm && corepack prepare pnpm@11.1.2 --activate
 
 WORKDIR /workspace
 
@@ -25,6 +25,9 @@ WORKDIR /workspace
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.base.json ./
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/frontend/package.json ./packages/frontend/
+COPY packages/backend/package.json ./packages/backend/
+COPY packages/auth-service/package.json ./packages/auth-service/
+COPY packages/grading-service/package.json ./packages/grading-service/
 # pnpm workspace 등록에 필요한 package.json — wasm-builder에서 가져옴
 COPY --from=wasm-builder /workspace/packages/formula-engine/pkg/package.json ./packages/formula-engine/pkg/
 COPY --from=wasm-builder /workspace/packages/formula-engine/pkg-node/package.json ./packages/formula-engine/pkg-node/
@@ -34,6 +37,9 @@ RUN pnpm install --frozen-lockfile
 # 소스 복사
 COPY packages/shared/ ./packages/shared/
 COPY packages/frontend/ ./packages/frontend/
+COPY packages/backend/package.json ./packages/backend/
+COPY packages/auth-service/package.json ./packages/auth-service/
+COPY packages/grading-service/package.json ./packages/grading-service/
 
 # wasm-builder에서 빌드된 WASM 파일 복사
 COPY --from=wasm-builder /workspace/packages/formula-engine/pkg/ ./packages/formula-engine/pkg/

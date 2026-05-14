@@ -12,14 +12,14 @@ import {
     UseGuards,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import { RegisterBodyDto, LoginBodyDto } from "../dto/auth.dto.js";
-import type { RegisterBody, LoginBody } from "../dto/auth.dto.js";
-import { AuthService } from "../service/auth.service.js";
-import { REDIS_TOKEN } from "../../../global/redis/redis.module.js";
 import type { Redis } from "ioredis";
-import { JwtAuthGuard } from "../../../global/security/jwt-auth.guard.js";
-import { AuthUser, type AuthUser as AuthUserType } from "../../../global/security/auth-user.decorator.js";
-import { ZodValidationPipe, parseCookie, serializeCookie } from "../../../global/common/index.js";
+import { AuthService } from "./auth.service.js";
+import { LoginBodyDto, RegisterBodyDto, type LoginBody, type RegisterBody } from "./dto/auth.dto.js";
+import { AuthUser, type AuthUser as AuthUserType } from "./auth-user.decorator.js";
+import { JwtAuthGuard } from "./jwt-auth.guard.js";
+import { parseCookie, serializeCookie } from "./common/cookie.js";
+import { ZodValidationPipe } from "./common/zod-validation.pipe.js";
+import { REDIS_TOKEN } from "./redis/redis.module.js";
 
 const ACCESS_TOKEN_EXPIRES = "1h";
 const REFRESH_TOKEN_EXPIRES_SEC = 7 * 24 * 60 * 60;
@@ -32,7 +32,8 @@ export class AuthController {
         private readonly authService: AuthService,
         @Inject(JwtService)
         private readonly jwtService: JwtService,
-        @Inject(REDIS_TOKEN) private readonly redis: Redis,
+        @Inject(REDIS_TOKEN)
+        private readonly redis: Redis,
     ) {}
 
     @Post("register")
@@ -87,17 +88,6 @@ export class AuthController {
         }
 
         await this.redis.del(`refresh:${token}`);
-        const newRefreshToken = crypto.randomUUID();
-        await this.redis.setex(
-            `refresh:${newRefreshToken}`,
-            REFRESH_TOKEN_EXPIRES_SEC,
-            user.id,
-        );
-        response.setHeader(
-            "Set-Cookie",
-            serializeCookie(COOKIE_NAME, newRefreshToken, REFRESH_TOKEN_EXPIRES_SEC),
-        );
-
         const accessToken = await this.issueRefreshSession(user, response);
         return { accessToken, user };
     }
@@ -109,9 +99,7 @@ export class AuthController {
         @Res({ passthrough: true }) response: { setHeader: (name: string, value: string) => void },
     ) {
         const token = parseCookie(cookieHeader)[COOKIE_NAME];
-        if (token) {
-            await this.redis.del(`refresh:${token}`);
-        }
+        if (token) await this.redis.del(`refresh:${token}`);
         response.setHeader("Set-Cookie", serializeCookie(COOKIE_NAME, "", 0));
         return null;
     }

@@ -1,18 +1,19 @@
-﻿import { createRequire } from "node:module";
+import { createRequire } from "node:module";
 import { Injectable } from "@nestjs/common";
 import type { FormulaEngine as IFormulaEngine } from "formula-engine-node";
-import type { WorkbookData, CellValue } from "@cellix/shared";
-import { deserializeWorkbook } from "@cellix/shared";
 import type {
-    GradingConfig,
     CellGradingRule,
-    TableGradingRule,
     CellRuleResult,
+    CellValue,
+    GradingConfig,
     GradingResult,
-} from "../entity/submission.entity.js";
+    TableGradingRule,
+    WorkbookData,
+} from "@cellix/shared";
+import { deserializeWorkbook } from "@cellix/shared";
 
-const _require = createRequire(import.meta.url);
-const { FormulaEngine } = _require("formula-engine-node") as {
+const require = createRequire(import.meta.url);
+const { FormulaEngine } = require("../../formula-engine/pkg-node/formula_engine.js") as {
     FormulaEngine: new () => IFormulaEngine;
 };
 
@@ -25,20 +26,20 @@ export class GradingService {
         const workbook = deserializeWorkbook(submittedRaw);
 
         const engine = new FormulaEngine();
-        this._loadWorkbookIntoEngine(engine, workbook);
+        this.loadWorkbookIntoEngine(engine, workbook);
 
         const cellResults: CellRuleResult[] = [];
         let totalEarned = 0;
 
         for (const rule of config.cells ?? []) {
-            const result = this._gradeCellRule(engine, rule);
+            const result = this.gradeCellRule(engine, rule);
             cellResults.push(result);
             totalEarned += result.earnedScore;
         }
 
         const tableResults: GradingResult["tableResults"] = [];
         for (const rule of config.tables ?? []) {
-            const result = this._gradeTableRule(workbook, rule);
+            const result = this.gradeTableRule(workbook, rule);
             tableResults.push(result);
             totalEarned += result.earnedScore;
         }
@@ -59,15 +60,11 @@ export class GradingService {
             status,
             cellResults,
             tableResults,
-            feedback: this._buildFeedback(
-                cellResults,
-                tableResults,
-                percentage,
-            ),
+            feedback: this.buildFeedback(cellResults, tableResults, percentage),
         };
     }
 
-    private _loadWorkbookIntoEngine(
+    private loadWorkbookIntoEngine(
         engine: IFormulaEngine,
         workbook: WorkbookData,
     ): void {
@@ -76,7 +73,6 @@ export class GradingService {
             if (!sheet) continue;
 
             engine.add_sheet(sheetId, sheet.name);
-
             const updates: Array<{
                 sheet_id: string;
                 row: number;
@@ -107,16 +103,14 @@ export class GradingService {
         }
     }
 
-    private _gradeCellRule(
+    private gradeCellRule(
         engine: IFormulaEngine,
         rule: CellGradingRule,
     ): CellRuleResult {
-        const { row, col } = this._parseAddress(rule.address);
-
+        const { row, col } = this.parseAddress(rule.address);
         const rawJson = engine.get_cell_value(rule.sheetId, row, col);
-        const parsed = this._parseCellVal(rawJson);
-        const actualValue = this._toValue(parsed);
-
+        const parsed = this.parseCellVal(rawJson);
+        const actualValue = this.toValue(parsed);
         const formulaUsed =
             engine.get_cell_formula(rule.sheetId, row, col) ?? undefined;
 
@@ -146,7 +140,7 @@ export class GradingService {
                 expectedValue: rule.expectedValue,
                 formulaUsed,
                 formulaMatched,
-                hint: rule.hint ?? `????ㅻ쪟媛 ?덉뒿?덈떎: ${parsed.v}`,
+                hint: rule.hint ?? `Formula error: ${parsed.v}`,
             };
         }
 
@@ -185,7 +179,7 @@ export class GradingService {
             hint: passed
                 ? undefined
                 : (rule.hint ??
-                  this._buildCellHint(
+                  this.buildCellHint(
                       rule,
                       actualValue,
                       formulaUsed,
@@ -194,7 +188,7 @@ export class GradingService {
         };
     }
 
-    private _gradeTableRule(
+    private gradeTableRule(
         workbook: WorkbookData,
         rule: TableGradingRule,
     ): GradingResult["tableResults"][number] {
@@ -215,7 +209,7 @@ export class GradingService {
                 passed: false,
                 earnedScore: 0,
                 maxScore: rule.scoreWeight,
-                hint: rule.hint ?? `"${rule.name}" ?대쫫???쒓? ?놁뒿?덈떎.`,
+                hint: rule.hint ?? `"${rule.name}" table was not found.`,
             };
         }
 
@@ -234,7 +228,7 @@ export class GradingService {
                     maxScore: rule.scoreWeight,
                     hint:
                         rule.hint ??
-                        `??而щ읆 ?ㅻ뜑媛 ?щ컮瑜댁? ?딆뒿?덈떎. ?덉긽: [${rule.expectedColumns.join(", ")}]`,
+                        `Table headers do not match. Expected: [${rule.expectedColumns.join(", ")}]`,
                 };
             }
         }
@@ -247,7 +241,7 @@ export class GradingService {
         };
     }
 
-    private _parseAddress(addr: string): { row: number; col: number } {
+    private parseAddress(addr: string): { row: number; col: number } {
         const clean = addr.replace(/\$/g, "");
         const match = clean.match(/^([A-Za-z]{1,3})(\d+)$/);
         if (!match) return { row: 0, col: 0 };
@@ -259,7 +253,7 @@ export class GradingService {
         return { row: parseInt(match[2], 10) - 1, col: col - 1 };
     }
 
-    private _parseCellVal(json: string): { t: string; v?: unknown } | null {
+    private parseCellVal(json: string): { t: string; v?: unknown } | null {
         try {
             return JSON.parse(json);
         } catch {
@@ -267,7 +261,7 @@ export class GradingService {
         }
     }
 
-    private _toValue(result: { t: string; v?: unknown } | null): CellValue {
+    private toValue(result: { t: string; v?: unknown } | null): CellValue {
         if (!result) return null;
         switch (result.t) {
             case "n":
@@ -285,7 +279,7 @@ export class GradingService {
         }
     }
 
-    private _buildCellHint(
+    private buildCellHint(
         rule: CellGradingRule,
         actualValue: CellValue,
         formulaUsed?: string,
@@ -294,40 +288,37 @@ export class GradingService {
         const parts: string[] = [];
         if (rule.expectedValue !== undefined && rule.expectedValue !== null) {
             parts.push(
-                `?덉긽媛? ${rule.expectedValue}, ?ㅼ젣媛? ${actualValue ?? "(鍮??)"}`,
+                `Expected ${rule.expectedValue}, actual ${actualValue ?? "(empty)"}`,
             );
         }
         if (rule.checkFormula && formulaMatched === false) {
             parts.push(
                 formulaUsed
-                    ? `?섏떇 ?⑦꽩??留욎? ?딆뒿?덈떎 (?ъ슜???섏떇: ${formulaUsed})`
-                    : "?섏떇???놁뒿?덈떎",
+                    ? `Formula pattern did not match: ${formulaUsed}`
+                    : "Formula was not used",
             );
         }
-        return parts.join(" / ") || "?ㅻ떟?낅땲??";
+        return parts.join(" / ") || "Incorrect answer";
     }
 
-    private _buildFeedback(
+    private buildFeedback(
         cellResults: CellRuleResult[],
         tableResults: GradingResult["tableResults"],
         percentage: number,
     ): string {
-        if (percentage >= 100)
-            return "?꾨꼍?⑸땲?? 紐⑤뱺 ??ぉ???뺥솗?섍쾶 ?꾩꽦?덉뒿?덈떎.";
+        if (percentage >= 100) return "Perfect. All grading items passed.";
         const failedCells = cellResults.filter((r) => !r.passed);
         const failedTables = tableResults.filter((r) => !r.passed);
         const total = failedCells.length + failedTables.length;
-        if (total === 0) return "?뚮??⑸땲??";
-        const parts = [`${total}媛???ぉ????몄뒿?덈떎.`];
-        if (failedCells.length > 0)
-            parts.push(
-                `?由??: ${failedCells.map((r) => r.address).join(", ")}`,
-            );
-        if (failedTables.length > 0)
-            parts.push(
-                `???ㅻ쪟: ${failedTables.map((r) => r.name).join(", ")}`,
-            );
+        if (total === 0) return "Partially correct.";
+
+        const parts = [`${total} grading item(s) failed.`];
+        if (failedCells.length > 0) {
+            parts.push(`Cells: ${failedCells.map((r) => r.address).join(", ")}`);
+        }
+        if (failedTables.length > 0) {
+            parts.push(`Tables: ${failedTables.map((r) => r.name).join(", ")}`);
+        }
         return parts.join(" ");
     }
 }
-

@@ -70,6 +70,7 @@ services:
             DATABASE_URL: "postgresql://${POSTGRES_USER:-cellix}:${POSTGRES_PASSWORD:-cellix_secret}@postgres:5432/${POSTGRES_DB:-cellix}"
             REDIS_URL: "redis://redis:6379"
             CORS_ORIGIN: "http://localhost:5173"
+            GRADING_SERVICE_URL: "http://grading-service:3003"
         depends_on:
             postgres:
                 condition: service_healthy
@@ -77,6 +78,54 @@ services:
                 condition: service_healthy
             migrate:
                 condition: service_completed_successfully
+            grading-service:
+                condition: service_started
+
+    auth-service:
+        container_name: cellix-auth-service
+        build:
+            context: .
+            dockerfile: packages/auth-service/Dockerfile
+        ports:
+            - "${AUTH_SERVICE_PORT:-3002}:3002"
+        volumes:
+            - ./packages/auth-service/src:/app/packages/auth-service/src
+            - ./packages/shared/src:/app/packages/shared/src
+        env_file:
+            - .env
+        environment:
+            NODE_ENV: development
+            PORT: "3002"
+            HOST: "0.0.0.0"
+            DATABASE_URL: "postgresql://${POSTGRES_USER:-cellix}:${POSTGRES_PASSWORD:-cellix_secret}@postgres:5432/${POSTGRES_DB:-cellix}"
+            REDIS_URL: "redis://redis:6379"
+            CORS_ORIGIN: "http://localhost:5173"
+        depends_on:
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+            migrate:
+                condition: service_completed_successfully
+
+    grading-service:
+        container_name: cellix-grading-service
+        build:
+            context: .
+            dockerfile: packages/grading-service/Dockerfile
+        ports:
+            - "${GRADING_SERVICE_PORT:-3003}:3003"
+        volumes:
+            - ./packages/grading-service/src:/app/packages/grading-service/src
+            - ./packages/shared/src:/app/packages/shared/src
+            - ./packages/formula-engine/pkg-node:/app/packages/formula-engine/pkg-node
+        env_file:
+            - .env
+        environment:
+            NODE_ENV: development
+            PORT: "3003"
+            HOST: "0.0.0.0"
+            CORS_ORIGIN: "http://localhost:5173"
 
     frontend:
         container_name: cellix-frontend
@@ -95,8 +144,10 @@ services:
         environment:
             NODE_ENV: development
             VITE_API_BASE_URL: "http://localhost:${BACKEND_PORT:-3001}"
+            VITE_AUTH_API_BASE_URL: "http://localhost:${AUTH_SERVICE_PORT:-3002}"
         depends_on:
             - backend
+            - auth-service
 
 volumes:
     postgres_data:

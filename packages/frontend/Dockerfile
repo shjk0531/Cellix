@@ -13,18 +13,22 @@ RUN cd packages/formula-engine && \
 # ── Stage 2: Node 개발 서버 ────────────────────────────────────────────────
 FROM node:24-alpine AS dev
 
-RUN apk upgrade --no-cache && npm install -g pnpm
+RUN apk upgrade --no-cache && corepack enable pnpm && corepack prepare pnpm@11.1.2 --activate
 
 WORKDIR /app
 COPY package.json pnpm-workspace.yaml ./
 COPY pnpm-lock.yaml ./
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/frontend/package.json ./packages/frontend/
+COPY packages/auth-service/package.json ./packages/auth-service/
+COPY packages/grading-service/package.json ./packages/grading-service/
 
 RUN pnpm install --frozen-lockfile
 
 COPY packages/shared ./packages/shared
 COPY packages/frontend ./packages/frontend
+COPY packages/auth-service/package.json ./packages/auth-service/
+COPY packages/grading-service/package.json ./packages/grading-service/
 COPY tsconfig.base.json ./
 
 # Stage 1에서 빌드한 WASM pkg 복사

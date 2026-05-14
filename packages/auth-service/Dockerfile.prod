@@ -1,0 +1,39 @@
+FROM node:24-alpine AS builder
+
+RUN corepack enable pnpm && corepack prepare pnpm@11.1.2 --activate
+
+WORKDIR /workspace
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.base.json ./
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/auth-service/package.json ./packages/auth-service/
+COPY packages/backend/package.json ./packages/backend/
+COPY packages/grading-service/package.json ./packages/grading-service/
+
+RUN pnpm install --frozen-lockfile
+
+COPY packages/shared/ ./packages/shared/
+COPY packages/auth-service/ ./packages/auth-service/
+COPY packages/backend/package.json ./packages/backend/
+COPY packages/grading-service/package.json ./packages/grading-service/
+
+RUN pnpm --filter @cellix/shared build && \
+    pnpm --filter @cellix/auth-service build
+
+FROM node:24-alpine AS runtime
+
+RUN apk upgrade --no-cache && corepack enable pnpm && corepack prepare pnpm@11.1.2 --activate
+
+WORKDIR /workspace
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/auth-service/package.json ./packages/auth-service/
+COPY packages/backend/package.json ./packages/backend/
+COPY packages/grading-service/package.json ./packages/grading-service/
+
+RUN pnpm install --frozen-lockfile --prod
+
+COPY --from=builder /workspace/packages/shared/dist ./packages/shared/dist
+COPY --from=builder /workspace/packages/auth-service/dist ./packages/auth-service/dist
+
+EXPOSE 3002
+CMD ["node", "--enable-source-maps", "packages/auth-service/dist/server.js"]

@@ -16,13 +16,11 @@
     },
     "dependencies": {
         "@cellix/shared": "workspace:*",
-        "@nestjs/common": "^11.1.19",
-        "@nestjs/core": "^11.1.19",
+        "@nestjs/common": "^11.1.20",
+        "@nestjs/core": "^11.1.20",
         "@nestjs/jwt": "^11.0.2",
-        "@nestjs/platform-express": "^11.1.19",
-        "bcrypt": "^6.0.0",
+        "@nestjs/platform-express": "^11.1.20",
         "drizzle-orm": "^0.45.2",
-        "hyperformula": "^3.2.0",
         "ioredis": "^5.10.1",
         "pino-pretty": "^13.1.3",
         "postgres": "^3.4.9",
@@ -32,8 +30,7 @@
         "zod": "^4.4.3"
     },
     "devDependencies": {
-        "@types/bcrypt": "^6.0.0",
-        "@types/node": "^25.6.2",
+        "@types/node": "^25.7.0",
         "dotenv": "^17.4.2",
         "drizzle-kit": "^0.31.10",
         "tsx": "^4.21.0",

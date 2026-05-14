@@ -37,6 +37,7 @@ const envSchema = z.object({
     }),
 
     CORS_ORIGIN: z.string().url().default("http://localhost:5173"),
+    GRADING_SERVICE_URL: z.string().url().default("http://localhost:3003"),
 
     JWT_SECRET: z.string().min(32).optional(),
     JWT_EXPIRES_IN: z.string().default("7d"),
