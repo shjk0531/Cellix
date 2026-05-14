@@ -87,6 +87,8 @@ services:
             - "${FRONTEND_PORT:-5173}:5173"
         volumes:
             - ./packages/frontend/src:/app/packages/frontend/src
+            - ./packages/frontend/vite.config.ts:/app/packages/frontend/vite.config.ts
+            - ./packages/frontend/tsconfig.json:/app/packages/frontend/tsconfig.json
             - ./packages/shared/src:/app/packages/shared/src
         env_file:
             - .env
